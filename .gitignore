@@ -1,6 +1,6 @@
 # Binaries
-/type_calc
-/type_calc.exe
+/pokedex
+/pokedex.exe
 /dist/
 *.exe
 *.test

@@ -1,9 +1,12 @@
-package main
+// Package dex loads Pokémon data from PokeAPI (with a local cache) and holds the
+// domain logic: Pokémon, moves, abilities, evolutions, natures and type effectiveness.
+package dex
 
 import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -19,22 +22,19 @@ const (
 
 var ignoredTypes = map[string]bool{"unknown": true, "shadow": true, "stellar": true}
 
-var errNotFound = errors.New("not found")
+var ErrNotFound = errors.New("not found")
 
 // TypeChart maps defending type -> attacking type -> multiplier (only entries != 1).
 type TypeChart map[string]map[string]float64
 
-type Pokemon struct {
-	Name      string   `json:"name"`
-	ID        int      `json:"id"`
-	Types     []string `json:"types"`
-	Abilities []string `json:"abilities"`
-}
-
-type PokeData struct {
+type Client struct {
 	refresh  bool
 	cacheDir string
 	client   *http.Client
+	sem      chan struct{} // limits concurrent requests to PokeAPI
+
+	// Progress, when set, receives short status messages about slow downloads.
+	Progress io.Writer
 
 	types        TypeChart
 	typeNames    []string
@@ -42,33 +42,36 @@ type PokeData struct {
 	pokemonSet   map[string]bool
 }
 
-func NewPokeData(refresh bool) *PokeData {
+func NewClient(refresh bool) *Client {
 	base, err := os.UserCacheDir()
 	if err != nil {
 		base = os.TempDir()
 	}
-	dir := filepath.Join(base, "type_calc")
+	dir := filepath.Join(base, "pokedex")
 	_ = os.MkdirAll(dir, 0o755)
-	return &PokeData{
+	return &Client{
 		refresh:  refresh,
 		cacheDir: dir,
 		client:   &http.Client{Timeout: 15 * time.Second},
+		sem:      make(chan struct{}, 6),
 	}
 }
 
-func (d *PokeData) get(url string, out any) error {
+func (d *Client) get(url string, out any) error {
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return err
 	}
-	req.Header.Set("User-Agent", "type-calc-cli/1.0")
+	req.Header.Set("User-Agent", "pokedex-cli/1.0")
+	d.sem <- struct{}{}
+	defer func() { <-d.sem }()
 	resp, err := d.client.Do(req)
 	if err != nil {
 		return fmt.Errorf("network error: %w", err)
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode == http.StatusNotFound {
-		return errNotFound
+		return ErrNotFound
 	}
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("PokeAPI returned %s for %s", resp.Status, url)
@@ -77,7 +80,7 @@ func (d *PokeData) get(url string, out any) error {
 }
 
 // cached loads name.json from the cache if fresh, otherwise calls load and stores the result.
-func cached[T any](d *PokeData, name string, load func() (T, error)) (T, error) {
+func cached[T any](d *Client, name string, load func() (T, error)) (T, error) {
 	path := filepath.Join(d.cacheDir, name+".json")
 	if !d.refresh {
 		if st, err := os.Stat(path); err == nil && time.Since(st.ModTime()) < cacheTTL {
@@ -104,7 +107,7 @@ type namedURL struct {
 	URL  string `json:"url"`
 }
 
-func (d *PokeData) Types() (TypeChart, error) {
+func (d *Client) Types() (TypeChart, error) {
 	if d.types != nil {
 		return d.types, nil
 	}
@@ -120,15 +123,15 @@ func (d *PokeData) Types() (TypeChart, error) {
 	return chart, nil
 }
 
-func (d *PokeData) TypeNames() []string {
+func (d *Client) TypeNames() []string {
 	if _, err := d.Types(); err != nil {
 		return nil
 	}
 	return d.typeNames
 }
 
-func (d *PokeData) loadTypes() (TypeChart, error) {
-	fmt.Fprintln(os.Stderr, dim("Downloading type chart from PokeAPI..."))
+func (d *Client) loadTypes() (TypeChart, error) {
+	d.progress("Downloading type chart from PokeAPI...")
 	var listing struct{ Results []namedURL }
 	if err := d.get(apiBase+"/type?limit=100", &listing); err != nil {
 		return nil, err
@@ -183,12 +186,12 @@ func (d *PokeData) loadTypes() (TypeChart, error) {
 	return chart, nil
 }
 
-func (d *PokeData) PokemonNames() ([]string, error) {
+func (d *Client) PokemonNames() ([]string, error) {
 	if d.pokemonNames != nil {
 		return d.pokemonNames, nil
 	}
 	names, err := cached(d, "pokemon_names", func() ([]string, error) {
-		fmt.Fprintln(os.Stderr, dim("Downloading Pokémon list from PokeAPI..."))
+		d.progress("Downloading Pokémon list from PokeAPI...")
 		var listing struct{ Results []namedURL }
 		if err := d.get(apiBase+"/pokemon?limit=100000", &listing); err != nil {
 			return nil, err
@@ -210,30 +213,31 @@ func (d *PokeData) PokemonNames() ([]string, error) {
 	return names, nil
 }
 
-func (d *PokeData) Pokemon(name string) (Pokemon, error) {
-	return cached(d, "pokemon_"+name, func() (Pokemon, error) {
-		var raw struct {
-			Name  string
-			ID    int
-			Types []struct {
-				Slot int
-				Type namedURL
-			}
-			Abilities []struct {
-				Ability namedURL
-			}
-		}
-		if err := d.get(apiBase+"/pokemon/"+name, &raw); err != nil {
-			return Pokemon{}, err
-		}
-		sort.Slice(raw.Types, func(i, j int) bool { return raw.Types[i].Slot < raw.Types[j].Slot })
-		p := Pokemon{Name: raw.Name, ID: raw.ID}
-		for _, t := range raw.Types {
-			p.Types = append(p.Types, t.Type.Name)
-		}
-		for _, a := range raw.Abilities {
-			p.Abilities = append(p.Abilities, a.Ability.Name)
-		}
-		return p, nil
-	})
+func (d *Client) progress(msg string) {
+	if d.Progress != nil {
+		fmt.Fprintln(d.Progress, msg)
+	}
+}
+
+// KnownPokemon returns every Pokémon name, once PokemonNames has loaded them.
+func (d *Client) KnownPokemon() []string { return d.pokemonNames }
+
+// IsPokemon reports whether name is a known Pokémon (after PokemonNames has loaded).
+func (d *Client) IsPokemon(name string) bool { return d.pokemonSet[name] }
+
+// Chart returns the type chart, once Types has loaded it.
+func (d *Client) Chart() TypeChart { return d.types }
+
+// NewOfflineClient returns a client preloaded with Pokémon names and a type chart,
+// without network access or cache. Useful for tests.
+func NewOfflineClient(names []string, chart TypeChart) *Client {
+	d := &Client{types: chart, pokemonNames: names, pokemonSet: map[string]bool{}}
+	for _, n := range names {
+		d.pokemonSet[n] = true
+	}
+	for t := range chart {
+		d.typeNames = append(d.typeNames, t)
+	}
+	sort.Strings(d.typeNames)
+	return d
 }

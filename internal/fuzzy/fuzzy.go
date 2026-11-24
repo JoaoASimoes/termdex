@@ -1,11 +1,12 @@
-package main
+// Package fuzzy provides typo-tolerant name matching.
+package fuzzy
 
 import (
 	"sort"
 	"strings"
 )
 
-func normalize(s string) string {
+func Normalize(s string) string {
 	s = strings.ToLower(strings.TrimSpace(s))
 	s = strings.Join(strings.Fields(s), "-")
 	return strings.NewReplacer("'", "", ".", "").Replace(s)
@@ -42,9 +43,9 @@ func similarity(a, b string) float64 {
 	return 1 - float64(levenshtein(a, b))/float64(max(la, lb))
 }
 
-// suggest returns up to n candidates: prefix matches, then similar names, then substring matches.
-func suggest(query string, candidates []string, n int) []string {
-	q := normalize(query)
+// Suggest returns up to n candidates: prefix matches, then similar names, then substring matches.
+func Suggest(query string, candidates []string, n int) []string {
+	q := Normalize(query)
 	if q == "" {
 		return nil
 	}

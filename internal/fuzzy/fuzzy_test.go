@@ -1,4 +1,4 @@
-package main
+package fuzzy
 
 import (
 	"reflect"
@@ -12,8 +12,8 @@ func TestNormalize(t *testing.T) {
 		"GARCHOMP":    "garchomp",
 	}
 	for in, want := range cases {
-		if got := normalize(in); got != want {
-			t.Errorf("normalize(%q) = %q, want %q", in, got, want)
+		if got := Normalize(in); got != want {
+			t.Errorf("Normalize(%q) = %q, want %q", in, got, want)
 		}
 	}
 }
@@ -35,15 +35,15 @@ func TestLevenshtein(t *testing.T) {
 func TestSuggest(t *testing.T) {
 	names := []string{"charizard", "charizard-mega-x", "charizard-mega-y", "giratina-altered", "giratina-origin", "pikachu"}
 
-	if got := suggest("charizrd", names, 8); len(got) == 0 || got[0] != "charizard" {
-		t.Errorf("suggest(charizrd) = %v, want charizard first", got)
+	if got := Suggest("charizrd", names, 8); len(got) == 0 || got[0] != "charizard" {
+		t.Errorf("Suggest(charizrd) = %v, want charizard first", got)
 	}
-	got := suggest("giratina", names, 8)
+	got := Suggest("giratina", names, 8)
 	want := []string{"giratina-origin", "giratina-altered"}
 	if !reflect.DeepEqual(got, want) {
-		t.Errorf("suggest(giratina) = %v, want %v", got, want)
+		t.Errorf("Suggest(giratina) = %v, want %v", got, want)
 	}
-	if got := suggest("xyzxyz", names, 8); len(got) != 0 {
-		t.Errorf("suggest(xyzxyz) = %v, want none", got)
+	if got := Suggest("xyzxyz", names, 8); len(got) != 0 {
+		t.Errorf("Suggest(xyzxyz) = %v, want none", got)
 	}
 }
