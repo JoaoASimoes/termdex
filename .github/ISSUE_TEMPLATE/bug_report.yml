@@ -1,0 +1,49 @@
+name: Bug report
+description: Something does not work as expected.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: Thanks for taking the time to report a bug! Please fill in as much as you can.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: A clear description of the bug. Screenshots or a copy of the terminal help a lot.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Run `pokedex`
+        2. Type `charizard` and press enter
+        3. …
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect?
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: Output of `pokedex --version`.
+      placeholder: pokedex v0.1.0
+    validations:
+      required: true
+  - type: input
+    id: env
+    attributes:
+      label: Operating system and terminal
+      placeholder: Ubuntu 24.04, GNOME Terminal / macOS 15, iTerm2 / Windows 11, Windows Terminal
+    validations:
+      required: true
+  - type: textarea
+    id: config
+    attributes:
+      label: Config file (optional)
+      description: If you changed the configuration, paste the relevant part (`pokedex config show`).
+      render: toml

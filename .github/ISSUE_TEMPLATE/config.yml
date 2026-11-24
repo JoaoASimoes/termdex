@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Wrong Pokémon data (stats, moves, evolutions…)
+    url: https://github.com/PokeAPI/pokeapi/issues
+    about: All game data comes from PokeAPI. If the data itself is wrong there, please report it to PokeAPI.

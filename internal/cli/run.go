@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"runtime/debug"
 	"strings"
 
 	"github.com/JoaoASimoes/pokedex/internal/config"
@@ -12,10 +13,26 @@ import (
 	"github.com/JoaoASimoes/pokedex/internal/tui"
 )
 
+// Version is the program version, set by main (see cmd/pokedex).
+var Version = "dev"
+
+// version returns Version, or the module version when installed with
+// `go install …@vX.Y.Z` (which cannot set it at build time).
+func version() string {
+	if Version != "dev" {
+		return Version
+	}
+	if bi, ok := debug.ReadBuildInfo(); ok && bi.Main.Version != "" && bi.Main.Version != "(devel)" {
+		return bi.Main.Version
+	}
+	return Version
+}
+
 // Run executes the program with the given arguments and returns the exit code.
 func Run(prog string, args []string) int {
 	fs := flag.NewFlagSet(prog, flag.ContinueOnError)
 	refresh := fs.Bool("refresh", false, "ignore the local cache and download the data again")
+	showVersion := fs.Bool("version", false, "print the version and exit")
 	cfgPath := fs.String("config", "", "config file (default "+config.DefaultPath()+")")
 	usage := func() {
 		fmt.Fprintf(os.Stderr, `Terminal Pokédex and type weakness calculator (PokeAPI).
@@ -25,6 +42,7 @@ Usage:
   %[1]s [options] pokemon|p <name>        weaknesses of a Pokémon
   %[1]s [options] type|t <type> [type2]   weaknesses of 1 or 2 types
   %[1]s [options] types                   list available types
+  %[1]s version                           print the version
   %[1]s [options] config <command>        manage the config file:
         path               print where the config file is read from
         init [--force]     write the default config there, with comments
@@ -44,6 +62,10 @@ Options (before the command):
 		return 2
 	}
 	args = fs.Args()
+	if *showVersion || (len(args) > 0 && args[0] == "version") {
+		fmt.Println("pokedex " + version())
+		return 0
+	}
 
 	path := *cfgPath
 	if path == "" {

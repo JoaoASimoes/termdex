@@ -17,3 +17,7 @@ go.work.sum
 *.swp
 *~
 .DS_Store
+
+# Test coverage
+coverage.out
+coverage.html
