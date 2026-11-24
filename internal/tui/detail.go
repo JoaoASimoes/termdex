@@ -320,8 +320,8 @@ func twoPanels(left string, leftW int, right string, rightW int, height int) str
 
 func (m tuiModel) viewOverview(totalW, avail int) string {
 	p := m.detail.p
-	leftW := max(36, (totalW-9)/2)
-	rightW := max(36, totalW-9-leftW)
+	leftW := max(30, (totalW-9)/2)
+	rightW := max(30, totalW-9-leftW)
 
 	leftParts := []string{renderIntro(p, leftW, m.spriteView(p.Name, 30, 15))}
 	leftParts = append(leftParts, sectionStyle.Render("Base stats")+"\n"+renderStats(p, leftW))
@@ -410,7 +410,7 @@ func renderAbilityInfo(a dex.AbilityInfo, hidden bool, width int) string {
 func (m tuiModel) viewMoves(totalW, bodyH, avail int) string {
 	d := m.detail
 	const leftW = 44
-	rightW := max(30, totalW-leftW-9)
+	rightW := max(20, totalW-leftW-9)
 	moves := m.filteredMoves()
 	sel := clamp(d.moveSel, 0, len(moves)-1)
 

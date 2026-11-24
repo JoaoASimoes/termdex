@@ -136,7 +136,7 @@ func (m tuiModel) currentFamilyIndex() int {
 func (m tuiModel) viewFamily(totalW, bodyH, avail int) string {
 	items := m.familyItems()
 	const leftW = 34
-	rightW := max(30, totalW-leftW-9)
+	rightW := max(20, totalW-leftW-9)
 	if len(items) == 0 {
 		return twoPanels(labelStyle.Render("No evolutions or other forms."), leftW, "", rightW, 6)
 	}

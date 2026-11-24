@@ -497,8 +497,9 @@ func (m tuiModel) viewSearch() string {
 	mode := tabOf(s.focus)
 	tabs := renderTabs(searchTabs, mode)
 
-	rightWidth := min(maxRightWidth, max(minRightWidth, m.width-leftWidth-8))
-	stacked := m.width > 0 && m.width < leftWidth+minRightWidth+8
+	// Two panels take 9 columns besides their content (borders, padding, gap).
+	rightWidth := min(maxRightWidth, max(minRightWidth, m.width-leftWidth-9))
+	stacked := m.width > 0 && m.width < leftWidth+minRightWidth+9
 	if stacked {
 		rightWidth = max(20, m.width-4)
 	}

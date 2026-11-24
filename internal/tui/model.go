@@ -33,7 +33,7 @@ const (
 
 const (
 	leftWidth      = 30 // inner width of the search panel
-	minRightWidth  = 44
+	minRightWidth  = 40
 	maxRightWidth  = 64
 	maxSuggestions = 10
 )
@@ -625,6 +625,7 @@ func (m tuiModel) View() tea.View {
 	default:
 		content = m.viewSearch()
 	}
+	content = fitScreen(content, m.width, m.height)
 	v := tea.NewView(content)
 	v.AltScreen = true
 	v.WindowTitle = "termdex"

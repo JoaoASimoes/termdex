@@ -7,6 +7,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	"github.com/charmbracelet/x/ansi"
 
 	"github.com/JoaoASimoes/termdex/internal/dex"
 )
@@ -179,7 +180,7 @@ func (m tuiModel) viewList() string {
 	}
 	totalW = min(totalW, 130)
 	const leftW = 34
-	rightW := max(30, min(maxRightWidth, totalW-leftW-9))
+	rightW := max(20, min(maxRightWidth, totalW-leftW-9))
 
 	e := m.keys.Entry
 	help := helpLine(item(pair(e.Up, e.Down), "select"), item(e.Open.Key(0), "open"),
@@ -229,8 +230,8 @@ func (m tuiModel) breadcrumb(width int) string {
 
 	right := accentBlock.Render(" "+m.keys.Entry.Back.Key(0)+" ") + labelStyle.Render(" ← back to "+m.backTarget()+" ")
 	gap := width - lipgloss.Width(left) - lipgloss.Width(right)
-	if gap < 2 {
-		return left + "   " + right
+	if gap < 2 { // too narrow for both: keep the trail, cut from the left side of it
+		return ansi.TruncateLeft(left, lipgloss.Width(left)-max(10, width-1), "…")
 	}
 	return left + strings.Repeat(" ", gap) + right
 }

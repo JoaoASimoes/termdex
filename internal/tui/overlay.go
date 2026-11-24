@@ -39,7 +39,11 @@ var helpTips = map[string][]string{
 
 func (m tuiModel) viewHelp() string {
 	name := m.helpScreenName()
-	keyW := 30
+	inner := 110 // text width inside the panel
+	if m.width > 0 {
+		inner = min(inner, max(40, m.width-4))
+	}
+	keyW := min(30, inner/3)
 	var b strings.Builder
 	for i, sec := range m.keys.HelpFor(name) {
 		if i > 0 {
@@ -47,17 +51,17 @@ func (m tuiModel) viewHelp() string {
 		}
 		b.WriteString(sectionStyle.Render(sec.Title) + "\n")
 		for _, r := range sec.Rows {
-			b.WriteString(lipgloss.NewStyle().Width(keyW).Render(keysLabel(r.Keys)) + r.Desc + "\n")
+			b.WriteString(lipgloss.JoinHorizontal(lipgloss.Top,
+				lipgloss.NewStyle().Width(keyW).Render(keysLabel(r.Keys)), wrap(r.Desc, inner-keyW)) + "\n")
 		}
 	}
 	if tips := helpTips[name]; len(tips) > 0 {
 		b.WriteString("\n" + sectionStyle.Render("Tips") + "\n")
-		width := min(max(40, m.width-8), 110)
 		for _, t := range tips {
-			b.WriteString(wrap("• "+t, width) + "\n")
+			b.WriteString(wrap("• "+t, inner) + "\n")
 		}
 	}
-	b.WriteString("\n" + labelStyle.Render("Every key can be changed in the config file: run `termdex config path` to find it, see docs/keybindings.md."))
+	b.WriteString("\n" + labelStyle.Render(wrap("Every key can be changed in the config file: run `termdex config path` to find it, see docs/keybindings.md.", inner)))
 
 	g := m.keys.Global
 	foot := m.footer(helpLine(item(g.Help.Key(0)+"/esc", "close"),

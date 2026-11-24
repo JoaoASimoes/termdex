@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"charm.land/lipgloss/v2"
+	"github.com/charmbracelet/x/ansi"
 )
 
 // Panels taller than the terminal are clipped and can be scrolled with the scroll keys.
@@ -28,8 +29,8 @@ func (m tuiModel) availHeight(footer string) int {
 }
 
 // clip cuts content to height lines at the current scroll offset, with an indicator line
-// when there is more. keys names the scroll keys for the indicator.
-func (m tuiModel) clip(content string, height int, keys string) string {
+// when there is more.
+func (m tuiModel) clip(content string, height int, _ string) string {
 	if height <= 0 {
 		return content
 	}
@@ -54,11 +55,27 @@ func (m tuiModel) clip(content string, height int, keys string) string {
 	default:
 		arrows = "↑↓ more"
 	}
-	if f := strings.Fields(keys); len(f) > 0 {
-		keys = f[0] // only the main keys, so the line never wraps
-	}
-	indicator := labelStyle.Render(fmt.Sprintf("── %s · %s · %d%% ──", arrows, keys, 100*(off+window)/len(lines)))
+	// Kept short so it fits even the narrowest panel (the keys are in the help line).
+	indicator := labelStyle.Render(fmt.Sprintf("── %s · %d%% ──", arrows, 100*(off+window)/len(lines)))
 	return strings.Join(visible, "\n") + "\n" + indicator
+}
+
+// fitScreen makes sure a frame never has more lines or columns than the terminal: a frame
+// that is too big makes the terminal scroll, and the renderer then leaves stray text behind.
+func fitScreen(content string, width, height int) string {
+	if width <= 0 || height <= 0 {
+		return content
+	}
+	lines := strings.Split(content, "\n")
+	if len(lines) > height {
+		lines = lines[:height]
+	}
+	for i, l := range lines {
+		if ansi.StringWidth(l) > width {
+			lines[i] = ansi.Truncate(l, width, "")
+		}
+	}
+	return strings.Join(lines, "\n")
 }
 
 // scrollBy moves the scroll offset, staying within what was drawn.
