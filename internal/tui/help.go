@@ -41,9 +41,11 @@ func (m tuiModel) searchHelp(mode int) string {
 	tabs := item(pair(s.PrevTab, s.NextTab), "tabs")
 	clear := item(s.Clear.Key(0), "clear/quit")
 	switch mode {
-	case 0:
+	case modePokedex:
 		return helpLine(sel, item(s.Confirm.Key(0), "open entry"), tabs, item(g.TypeMatchups.Key(0), "types"), clear)
-	case 1:
+	case modeMoves, modeItems:
+		return helpLine(sel, "type to search", tabs, item(g.Search.Key(0), "Pokémon"), clear)
+	case modeNatures:
 		return helpLine(sel, "type a name or stat (speed, -spa)", tabs, item(g.Search.Key(0), "search"), clear)
 	default:
 		return helpLine(sel, item(s.Confirm.Key(0), "confirm"), item(s.NextField.Key(0), "Type 1/Type 2"),

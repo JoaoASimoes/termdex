@@ -29,7 +29,7 @@ quit = ["ctrl+c"]
 search = ["ctrl+f"]          # new Pokémon search
 type_matchups = ["ctrl+t"]   # jump to the Type Matchups tab
 
-# Search screen (Pokédex, Natures and Type Matchups tabs). You are typing in a text box
+# Search screen (Pokédex, Moves, Items, Natures and Type Matchups tabs). You are typing in a text box
 # here, so avoid plain letters: they could no longer be typed.
 [keys.search]
 up = ["up", "ctrl+k", "ctrl+p"]

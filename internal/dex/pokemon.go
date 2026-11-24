@@ -110,6 +110,8 @@ type MoveInfo struct {
 	Effect       string `json:"effect"`
 	Flavor       string `json:"flavor"`
 	Generation   string `json:"generation"`
+	// LearnedBy lists every Pokémon that can learn the move, in any game.
+	LearnedBy []string `json:"learned_by"`
 }
 
 // ----------------------------------------------------------------------------- raw API shapes
@@ -382,7 +384,7 @@ func (d *Client) Ability(name string) (AbilityInfo, error) {
 }
 
 func (d *Client) Move(name string) (MoveInfo, error) {
-	return cached(d, "move_"+name, func() (MoveInfo, error) {
+	return cached(d, "move2_"+name, func() (MoveInfo, error) {
 		var raw struct {
 			Name              string
 			Names             []apiName
@@ -396,6 +398,7 @@ func (d *Client) Move(name string) (MoveInfo, error) {
 			EffectEntries     []apiEffectEntry `json:"effect_entries"`
 			FlavorTextEntries []apiFlavorEntry `json:"flavor_text_entries"`
 			Generation        namedURL
+			LearnedByPokemon  []namedURL `json:"learned_by_pokemon"`
 		}
 		if err := d.get(apiBase+"/move/"+name, &raw); err != nil {
 			return MoveInfo{}, err
@@ -414,6 +417,9 @@ func (d *Client) Move(name string) (MoveInfo, error) {
 			Generation:   raw.Generation.Name,
 		}
 		m.ShortEffect, m.Effect = englishEffect(raw.EffectEntries)
+		for _, p := range raw.LearnedByPokemon {
+			m.LearnedBy = append(m.LearnedBy, p.Name)
+		}
 		return m, nil
 	})
 }

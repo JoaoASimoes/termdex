@@ -2,20 +2,23 @@ package tui
 
 import (
 	"fmt"
-	"github.com/JoaoASimoes/pokedex/internal/dex"
-	"github.com/JoaoASimoes/pokedex/internal/fuzzy"
 	"strings"
 	"time"
 
 	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+
+	"github.com/JoaoASimoes/pokedex/internal/dex"
+	"github.com/JoaoASimoes/pokedex/internal/fuzzy"
 )
 
 type field int
 
 const (
 	fieldPokemon field = iota
+	fieldMove
+	fieldItem
 	fieldNature
 	fieldType1
 	fieldType2
@@ -25,13 +28,26 @@ const (
 // noType is the "none" entry of the Type 2 list.
 const noType = ""
 
-var fieldLabels = [numFields]string{"Search Pokémon", "Search nature or stat", "Type 1", "Type 2 (optional)"}
+// maxCatalogMatches caps the move/item matches listed while typing.
+const maxCatalogMatches = 300
 
-// Search screen tabs, in tab order: Pokédex → Natures → Type Matchups.
-var searchTabs = []string{"Pokédex", "Natures", "Type Matchups"}
+var fieldLabels = [numFields]string{
+	"Search Pokémon", "Search moves", "Search items", "Search nature or stat", "Type 1", "Type 2 (optional)",
+}
+
+// Search screen tabs, in tab order.
+var searchTabs = []string{"Pokédex", "Moves", "Items", "Natures", "Type Matchups"}
 
 // tabFields is the field focused when a search tab is opened.
-var tabFields = []field{fieldPokemon, fieldNature, fieldType1}
+var tabFields = []field{fieldPokemon, fieldMove, fieldItem, fieldNature, fieldType1}
+
+const (
+	modePokedex = iota
+	modeMoves
+	modeItems
+	modeNatures
+	modeTypes
+)
 
 // switchTab moves to the previous/next search tab, wrapping around.
 func (m *tuiModel) switchTab(delta int) tea.Cmd {
@@ -42,11 +58,15 @@ func (m *tuiModel) switchTab(delta int) tea.Cmd {
 func tabOf(f field) int {
 	switch f {
 	case fieldPokemon:
-		return 0
+		return modePokedex
+	case fieldMove:
+		return modeMoves
+	case fieldItem:
+		return modeItems
 	case fieldNature:
-		return 1
+		return modeNatures
 	default:
-		return 2
+		return modeTypes
 	}
 }
 
@@ -63,11 +83,15 @@ type searchState struct {
 	typeResult   []string // type combination shown on the right
 
 	nature string // nature shown on the right
+	move   string // move shown on the right
+	item   string // item shown on the right
 }
 
 func newSearchState() searchState {
 	var s searchState
-	placeholders := [numFields]string{"e.g. garchomp", "e.g. adamant, speed, -spa", "e.g. fire", "e.g. flying"}
+	placeholders := [numFields]string{
+		"e.g. garchomp", "e.g. thunderbolt", "e.g. leftovers", "e.g. adamant, speed, -spa", "e.g. fire", "e.g. flying",
+	}
 	for i := range s.inputs {
 		in := textinput.New()
 		in.Prompt = "› "
@@ -86,8 +110,13 @@ func (m *tuiModel) setFocus(f field) tea.Cmd {
 	s.focus = (f + numFields) % numFields
 	m.refreshSuggestions()
 	cmds := []tea.Cmd{s.inputs[s.focus].Focus()}
-	if s.focus == fieldNature {
+	switch s.focus {
+	case fieldNature:
 		cmds = append(cmds, m.fetchNatures(), m.preview())
+	case fieldMove:
+		cmds = append(cmds, m.fetchCatalog(fieldMove), m.preview())
+	case fieldItem:
+		cmds = append(cmds, m.fetchCatalog(fieldItem), m.preview())
 	}
 	return tea.Batch(cmds...)
 }
@@ -104,6 +133,16 @@ func (m *tuiModel) refreshSuggestions() {
 	case s.focus == fieldPokemon && q != "":
 		s.suggestions = fuzzy.Suggest(q, m.data.KnownPokemon(), maxSuggestions)
 	case s.focus == fieldPokemon:
+	case s.focus == fieldMove || s.focus == fieldItem:
+		names := m.moveNames
+		if s.focus == fieldItem {
+			names = m.itemNames
+		}
+		if q == "" {
+			s.suggestions = names // the whole catalog
+		} else {
+			s.suggestions = fuzzy.Suggest(q, names, maxCatalogMatches)
+		}
 	case s.focus == fieldNature:
 		if m.natures != nil {
 			s.suggestions = dex.SuggestNatures(q, m.natures)
@@ -135,6 +174,21 @@ func (m *tuiModel) showPokemon(name string, debounce bool) tea.Cmd {
 	return tea.Tick(m.previewDelay, func(time.Time) tea.Msg { return previewMsg{seq, name} })
 }
 
+// showCatalog previews a move or item: at once when loaded, otherwise after a short
+// pause so scrolling quickly through the list does not fire a request per row.
+func (m *tuiModel) showCatalog(kind field, name string) tea.Cmd {
+	m.catSeq++
+	if kind == fieldMove {
+		if _, ok := m.moves[name]; ok {
+			return nil
+		}
+	} else if it, ok := m.items[name]; ok {
+		return m.fetchSpriteKey(itemSpriteKey(name), it.Sprite)
+	}
+	seq := m.catSeq
+	return tea.Tick(m.previewDelay, func(time.Time) tea.Msg { return catalogPreviewMsg{seq, kind, name} })
+}
+
 // preview shows the result for the highlighted suggestion without confirming it.
 func (m *tuiModel) preview() tea.Cmd {
 	s := &m.search
@@ -145,6 +199,12 @@ func (m *tuiModel) preview() tea.Cmd {
 	switch s.focus {
 	case fieldPokemon:
 		return m.showPokemon(pick, true)
+	case fieldMove:
+		s.move = pick
+		return m.showCatalog(fieldMove, pick)
+	case fieldItem:
+		s.item = pick
+		return m.showCatalog(fieldItem, pick)
 	case fieldNature:
 		s.nature = pick
 	case fieldType1:
@@ -168,7 +228,8 @@ func (m *tuiModel) confirm() tea.Cmd {
 		pick = s.suggestions[s.selected]
 	}
 
-	if s.focus == fieldPokemon {
+	switch s.focus {
+	case fieldPokemon:
 		if pick == "" {
 			if in.Value() != "" {
 				m.status = fmt.Sprintf("No Pokémon matches '%s'.", in.Value())
@@ -182,18 +243,16 @@ func (m *tuiModel) confirm() tea.Cmd {
 		}
 		s.openOnLoad = pick
 		return m.showPokemon(pick, false)
-	}
 
-	if s.focus == fieldNature {
+	case fieldMove, fieldItem, fieldNature:
 		if pick == "" {
-			m.status = fmt.Sprintf("No nature matches '%s'.", in.Value())
+			m.status = fmt.Sprintf("Nothing matches '%s'.", in.Value())
 			return nil
 		}
-		s.nature = pick
 		in.SetValue(pick)
 		in.CursorEnd()
 		m.refreshSuggestions()
-		return nil
+		return m.preview()
 	}
 
 	if len(s.suggestions) == 0 {
@@ -228,7 +287,7 @@ func (m tuiModel) updateSearch(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			s.inputs[s.focus].SetValue("")
 			m.refreshSuggestions()
-			return m, nil
+			return m, m.preview()
 		case keys.NextField.Matches(k), keys.PrevField.Matches(k):
 			// Only moves between the boxes of the current tab (Type 1 <-> Type 2).
 			switch s.focus {
@@ -273,6 +332,21 @@ func (m tuiModel) updateSearch(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 // ----------------------------------------------------------------------------- view
 
+// listRows is how many suggestions fit on screen; longer lists scroll.
+func (m tuiModel) listRows() int {
+	if m.height <= 0 {
+		return 20
+	}
+	extra := 0
+	if m.search.focus == fieldType1 || m.search.focus == fieldType2 {
+		extra = 3 // two boxes
+	}
+	if m.search.focus == fieldMove || m.search.focus == fieldItem {
+		extra = 1 // the "N of M" line
+	}
+	return max(5, m.height-15-extra)
+}
+
 func (m tuiModel) searchPanel() string {
 	s := m.search
 	var b strings.Builder
@@ -293,41 +367,74 @@ func (m tuiModel) searchPanel() string {
 	}
 
 	b.WriteString("\n")
+	catalog := s.focus == fieldMove || s.focus == fieldItem
 	switch {
 	case !m.dataReady:
 	case s.focus == fieldNature && m.natures == nil:
 		b.WriteString(m.spinner.View() + helpStyle.Render(" Loading natures…"))
+	case s.focus == fieldMove && m.moveNames == nil:
+		b.WriteString(m.spinner.View() + helpStyle.Render(" Loading moves…"))
+	case s.focus == fieldItem && m.itemNames == nil:
+		b.WriteString(m.spinner.View() + helpStyle.Render(" Loading items…"))
 	case len(s.suggestions) == 0 && s.focus == fieldPokemon && s.inputs[fieldPokemon].Value() == "":
 		b.WriteString(helpStyle.Render("Start typing a name…"))
 	case len(s.suggestions) == 0:
 		b.WriteString(helpStyle.Render("No matches"))
 	default:
-		for i, sug := range s.suggestions {
-			if sug == noType {
-				sug = "— none (single type) —"
+		if catalog {
+			total := len(m.moveNames)
+			if s.focus == fieldItem {
+				total = len(m.itemNames)
 			}
-			hint := ""
-			if s.focus == fieldNature {
-				if n, ok := dex.NatureByName(m.natures, sug); ok {
-					hint = natureHint(n)
-				}
-			}
-			if s.focus != fieldPokemon {
-				sug = dex.Capitalize(sug)
-			}
-			if i == s.selected {
-				b.WriteString(selectedStyle.Render(fmt.Sprintf("▸ %-9s", sug)) + hint + "\n")
-			} else {
-				b.WriteString(fmt.Sprintf("  %-9s", sug) + hint + "\n")
-			}
+			b.WriteString(labelStyle.Render(fmt.Sprintf("%d of %d", len(s.suggestions), total)) + "\n")
+		}
+		rows := m.listRows()
+		start := clamp(s.selected-rows/2, 0, max(0, len(s.suggestions)-rows))
+		end := min(len(s.suggestions), start+rows)
+		for i := start; i < end; i++ {
+			b.WriteString(m.suggestionRow(s.suggestions[i], i == s.selected) + "\n")
 		}
 	}
 	return strings.TrimRight(b.String(), "\n")
 }
 
+func (m tuiModel) suggestionRow(sug string, selected bool) string {
+	s := m.search
+	hint := ""
+	label := sug
+	switch s.focus {
+	case fieldPokemon:
+	case fieldMove, fieldItem:
+		label = truncate(dex.DisplayName(sug), leftWidth-3)
+		if s.focus == fieldMove {
+			if mv, ok := m.moves[sug]; ok {
+				label = truncate(mv.DisplayName, leftWidth-3)
+			}
+		} else if it, ok := m.items[sug]; ok {
+			label = truncate(it.DisplayName, leftWidth-3)
+		}
+	case fieldNature:
+		if n, ok := dex.NatureByName(m.natures, sug); ok {
+			hint = natureHint(n)
+		}
+		label = fmt.Sprintf("%-9s", dex.Capitalize(sug))
+	default:
+		if sug == noType {
+			label = "— none (single type) —"
+		} else {
+			label = dex.Capitalize(sug)
+		}
+	}
+	if selected {
+		return selectedStyle.Render("▸ "+label) + hint
+	}
+	return "  " + label + hint
+}
+
 func (m tuiModel) searchResultPanel(width int) string {
 	s := m.search
-	if s.focus == fieldPokemon {
+	switch s.focus {
+	case fieldPokemon:
 		if s.preview == nil {
 			return helpStyle.Render("Type a Pokémon name. The Pokédex entry of the\n" +
 				"highlighted suggestion appears here.\n\n" +
@@ -339,8 +446,25 @@ func (m tuiModel) searchResultPanel(width int) string {
 			rows = clamp(m.height-30, 6, 13)
 		}
 		return renderPokemonCard(m.data.Chart(), *s.preview, width, m.spriteView(s.preview.Name, rows*2, rows))
-	}
-	if s.focus == fieldNature {
+	case fieldMove:
+		if s.move == "" {
+			return helpStyle.Render("Every move in the games. Scroll the list or type\nto search; details appear here.")
+		}
+		mv, ok := m.moves[s.move]
+		if !ok {
+			return headingStyle.Render(dex.DisplayName(s.move)) + "\n\n" + m.spinner.View() + " Loading…"
+		}
+		return renderMoveInfo(mv, nil, width)
+	case fieldItem:
+		if s.item == "" {
+			return helpStyle.Render("Every item in the games. Scroll the list or type\nto search; details appear here.")
+		}
+		it, ok := m.items[s.item]
+		if !ok {
+			return headingStyle.Render(dex.DisplayName(s.item)) + "\n\n" + m.spinner.View() + " Loading…"
+		}
+		return renderItemInfo(it, width, m.spriteViewKey(itemSpriteKey(it.Name), 24, 12))
+	case fieldNature:
 		return renderNaturePanel(m.natures, s.nature, width)
 	}
 	if len(s.typeResult) == 0 {

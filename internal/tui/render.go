@@ -408,3 +408,59 @@ func renderNatureGrid(natures []dex.Nature, selected string) string {
 	}
 	return strings.TrimRight(b.String(), "\n")
 }
+
+// ----------------------------------------------------------------------------- items
+
+var categoryLabels = map[string]string{
+	"held-items": "Held item", "choice": "Held item (Choice)", "bad-held-items": "Held item (harmful)",
+	"healing": "Medicine", "status-cures": "Medicine", "revival": "Medicine", "pp-recovery": "Medicine",
+	"vitamins": "Vitamin", "evolution": "Evolution item", "standard-balls": "Poké Ball",
+	"special-balls": "Poké Ball", "apricorn-balls": "Poké Ball", "all-machines": "TM / HM / TR",
+	"mega-stones": "Mega Stone", "z-crystals": "Z-Crystal", "plates": "Plate", "memories": "Memory",
+	"type-enhancement": "Type booster", "medicine": "Medicine",
+}
+
+func itemCategory(c string) string {
+	if l, ok := categoryLabels[c]; ok {
+		return l
+	}
+	return dex.DisplayName(c)
+}
+
+func renderItemInfo(it dex.ItemInfo, width int, sprite string) string {
+	facts := func(w int) string {
+		lines := []string{labelStyle.Render("Category ") + itemCategory(it.Category)}
+		if it.FlingPower != nil {
+			lines = append(lines, labelStyle.Render("Fling power ")+fmt.Sprint(*it.FlingPower))
+		}
+		if len(it.Attributes) > 0 {
+			var attrs []string
+			for _, a := range it.Attributes {
+				attrs = append(attrs, dex.DisplayName(a))
+			}
+			lines = append(lines, wrap(labelStyle.Render("Attributes ")+strings.Join(attrs, ", "), w))
+		}
+		return headingStyle.Render(it.DisplayName) + "\n\n" + strings.Join(lines, "\n")
+	}
+
+	head := facts(width)
+	if sprite != "" {
+		textW := max(20, width-lipgloss.Width(sprite)-2)
+		head = lipgloss.JoinHorizontal(lipgloss.Top, sprite, "  ", lipgloss.NewStyle().Width(textW).Render(facts(textW)))
+	}
+
+	parts := []string{head}
+	if it.ShortEffect != "" {
+		parts = append(parts, sectionStyle.Render("In short")+"\n"+wrap(it.ShortEffect, width))
+	}
+	if it.Effect != "" && it.Effect != it.ShortEffect {
+		parts = append(parts, sectionStyle.Render("Effect")+"\n"+wrap(it.Effect, width))
+	}
+	if it.Flavor != "" {
+		parts = append(parts, flavorStyle.Render(wrap(it.Flavor, width)))
+	}
+	if len(it.HeldBy) > 0 {
+		parts = append(parts, sectionStyle.Render("Held by wild Pokémon")+"\n"+wrap(nameList(it.HeldBy, 30), width))
+	}
+	return strings.Join(parts, "\n\n")
+}

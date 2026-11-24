@@ -47,3 +47,29 @@ func TestConfirmEmptyTypeFieldPicksHighlighted(t *testing.T) {
 		t.Fatalf("typeResult = %v, want %v", got, want)
 	}
 }
+
+func TestTabsCycleThroughCatalogs(t *testing.T) {
+	m := newTestModel()
+	var seen []int
+	for range searchTabs {
+		m.switchTab(1)
+		seen = append(seen, tabOf(m.search.focus))
+	}
+	if want := []int{modeMoves, modeItems, modeNatures, modeTypes, modePokedex}; !reflect.DeepEqual(seen, want) {
+		t.Fatalf("tab order = %v, want %v", seen, want)
+	}
+}
+
+func TestCatalogListsEverythingThenFilters(t *testing.T) {
+	m := newTestModel()
+	m.moveNames = []string{"absorb", "thunder", "thunderbolt", "tackle"}
+	m.setFocus(fieldMove)
+	if len(m.search.suggestions) != 4 {
+		t.Fatalf("empty search should list every move, got %v", m.search.suggestions)
+	}
+	m.search.inputs[fieldMove].SetValue("thunderbot") // typo
+	m.refreshSuggestions()
+	if len(m.search.suggestions) == 0 || m.search.suggestions[0] != "thunderbolt" {
+		t.Fatalf("got %v, want thunderbolt first", m.search.suggestions)
+	}
+}

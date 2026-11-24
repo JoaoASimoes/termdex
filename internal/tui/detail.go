@@ -438,7 +438,7 @@ func (m tuiModel) viewMoves(totalW, bodyH int) string {
 	if len(moves) > 0 {
 		ref := moves[sel]
 		if info, ok := m.moves[ref.Name]; ok {
-			right = renderMoveInfo(info, ref, rightW)
+			right = renderMoveInfo(info, &ref, rightW)
 		} else {
 			right = headingStyle.Render(dex.DisplayName(ref.Name)) + "\n\n" + m.spinner.View() + " Loading…"
 		}
@@ -464,7 +464,9 @@ func (m tuiModel) moveRow(ref dex.MoveRef, selected bool) string {
 	return prefix + labelStyle.Render(method) + name + " " + typ + " " + class
 }
 
-func renderMoveInfo(mv dex.MoveInfo, ref dex.MoveRef, width int) string {
+// renderMoveInfo shows a move. With ref (a Pokémon's move pool) it says how that Pokémon
+// learns it; without (the Moves tab) it lists the Pokémon that can learn it.
+func renderMoveInfo(mv dex.MoveInfo, ref *dex.MoveRef, width int) string {
 	title := headingStyle.Render(mv.DisplayName)
 	badges := typeBadge(mv.Type) + "  " + classLabel(mv.Class, false)
 
@@ -488,20 +490,26 @@ func renderMoveInfo(mv dex.MoveInfo, ref dex.MoveRef, width int) string {
 	}
 	stats := strings.Join(cells, "   ")
 
-	learn := dex.MethodLabel(ref)
-	switch ref.Method {
-	case "level-up":
-		learn = fmt.Sprintf("Level %d", max(1, ref.Level))
-	case "machine":
-		learn = "TM / TR"
-	case "egg":
-		learn = "Egg move"
-	case "tutor":
-		learn = "Move tutor"
+	var learned string
+	if ref != nil {
+		learn := dex.MethodLabel(*ref)
+		switch ref.Method {
+		case "level-up":
+			learn = fmt.Sprintf("Level %d", max(1, ref.Level))
+		case "machine":
+			learn = "TM / TR"
+		case "egg":
+			learn = "Egg move"
+		case "tutor":
+			learn = "Move tutor"
+		}
+		learned = labelStyle.Render("Learned by ") + learn
 	}
-	learned := labelStyle.Render("Learned by ") + learn
 	if mv.Generation != "" {
-		learned += labelStyle.Render(" · introduced in " + dex.GenLabel(mv.Generation))
+		if learned != "" {
+			learned += labelStyle.Render(" · ")
+		}
+		learned += labelStyle.Render("Introduced in " + dex.GenLabel(mv.Generation))
 	}
 
 	parts := []string{title + "\n" + badges, wrap(stats, width), wrap(learned, width)}
@@ -516,5 +524,28 @@ func renderMoveInfo(mv dex.MoveInfo, ref dex.MoveRef, width int) string {
 	if mv.Flavor != "" {
 		parts = append(parts, flavorStyle.Render(wrap(mv.Flavor, width)))
 	}
+	if ref == nil {
+		parts = append(parts, sectionStyle.Render(fmt.Sprintf("Learned by %d Pokémon", len(mv.LearnedBy)))+
+			"\n"+wrap(nameList(mv.LearnedBy, 40), width))
+	}
 	return strings.Join(parts, "\n\n")
+}
+
+// nameList joins up to limit display names, e.g. "Pikachu, Raichu … and 12 more".
+func nameList(names []string, limit int) string {
+	if len(names) == 0 {
+		return labelStyle.Render("None.")
+	}
+	var shown []string
+	for i, n := range names {
+		if i == limit {
+			break
+		}
+		shown = append(shown, dex.DisplayName(n))
+	}
+	s := strings.Join(shown, ", ")
+	if extra := len(names) - len(shown); extra > 0 {
+		s += labelStyle.Render(fmt.Sprintf(" … and %d more", extra))
+	}
+	return s
 }

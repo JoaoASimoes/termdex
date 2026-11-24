@@ -72,6 +72,26 @@ type naturesLoadedMsg struct {
 	err     error
 }
 
+// catalogPreviewMsg fires after a short pause on a highlighted move/item not loaded yet.
+type catalogPreviewMsg struct {
+	seq  int
+	kind field // fieldMove or fieldItem
+	name string
+}
+
+// catalogLoadedMsg carries the full list of move or item names.
+type catalogLoadedMsg struct {
+	kind  field
+	names []string
+	err   error
+}
+
+type itemLoadedMsg struct {
+	name string
+	info dex.ItemInfo
+	err  error
+}
+
 type moveLoadedMsg struct {
 	name string
 	info dex.MoveInfo
@@ -98,6 +118,10 @@ type tuiModel struct {
 	abilities  map[string]dex.AbilityInfo
 	moves      map[string]dex.MoveInfo
 	natures    []dex.Nature
+	moveNames  []string // every move (Moves tab)
+	itemNames  []string // every item (Items tab)
+	items      map[string]dex.ItemInfo
+	catSeq     int                    // bumped on every move/item preview; stale previews are ignored
 	spriteImgs map[string]image.Image // nil entry = no sprite available
 	spriteStr  map[string]string      // rendered sprites, keyed by "name@colsxrows"
 	pending    map[string]bool        // "ability:<name>" / "move:<name>" requests in flight
@@ -122,6 +146,7 @@ func newTUIModel(d *dex.Client, cfg config.Config) tuiModel {
 		pokeCache:    map[string]dex.Pokemon{},
 		abilities:    map[string]dex.AbilityInfo{},
 		moves:        map[string]dex.MoveInfo{},
+		items:        map[string]dex.ItemInfo{},
 		spriteImgs:   map[string]image.Image{},
 		spriteStr:    map[string]string{},
 		pending:      map[string]bool{},
@@ -214,6 +239,46 @@ func (m *tuiModel) fetchNatures() tea.Cmd {
 		n, err := d.Natures()
 		return naturesLoadedMsg{n, err}
 	})
+}
+
+// itemSpriteKey is the sprite cache key of an item (kept apart from Pokémon names).
+func itemSpriteKey(name string) string { return "item~" + name }
+
+// fetchCatalog loads the list of every move (kind fieldMove) or item (fieldItem).
+func (m *tuiModel) fetchCatalog(kind field) tea.Cmd {
+	key := "catalog:moves"
+	loaded := m.moveNames != nil
+	if kind == fieldItem {
+		key, loaded = "catalog:items", m.itemNames != nil
+	}
+	if loaded || m.pending[key] {
+		return nil
+	}
+	m.pending[key] = true
+	d := m.data
+	return tea.Batch(m.spin(), func() tea.Msg {
+		var names []string
+		var err error
+		if kind == fieldItem {
+			names, err = d.ItemNames()
+		} else {
+			names, err = d.MoveNames()
+		}
+		return catalogLoadedMsg{kind, names, err}
+	})
+}
+
+func (m *tuiModel) fetchItem(name string) tea.Cmd {
+	key := "item:" + name
+	if _, ok := m.items[name]; ok || m.pending[key] {
+		return nil
+	}
+	m.pending[key] = true
+	d := m.data
+	return func() tea.Msg {
+		it, err := d.Item(name)
+		return itemLoadedMsg{name, it, err}
+	}
 }
 
 func (m *tuiModel) fetchMove(name string) tea.Cmd {
@@ -320,6 +385,45 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.moves[msg.name] = msg.info
 		}
 		return m, nil
+
+	case catalogLoadedMsg:
+		if msg.kind == fieldItem {
+			delete(m.pending, "catalog:items")
+		} else {
+			delete(m.pending, "catalog:moves")
+		}
+		if msg.err != nil {
+			m.status = "Could not load the list: " + msg.err.Error()
+			return m, nil
+		}
+		if msg.kind == fieldItem {
+			m.itemNames = msg.names
+		} else {
+			m.moveNames = msg.names
+		}
+		if m.search.focus == msg.kind {
+			m.refreshSuggestions()
+			return m, m.preview()
+		}
+		return m, nil
+
+	case catalogPreviewMsg:
+		if msg.seq != m.catSeq {
+			return m, nil // the user has moved on
+		}
+		if msg.kind == fieldItem {
+			return m, tea.Batch(m.spin(), m.fetchItem(msg.name))
+		}
+		return m, tea.Batch(m.spin(), m.fetchMove(msg.name))
+
+	case itemLoadedMsg:
+		delete(m.pending, "item:"+msg.name)
+		if msg.err != nil {
+			m.status = "Could not load item: " + msg.err.Error()
+			return m, nil
+		}
+		m.items[msg.name] = msg.info
+		return m, m.fetchSpriteKey(itemSpriteKey(msg.name), msg.info.Sprite)
 
 	case spinner.TickMsg:
 		if m.loading == "" && len(m.pending) == 0 {

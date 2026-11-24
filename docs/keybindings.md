@@ -56,7 +56,7 @@ Notes:
 | `search`        | `ctrl+f`    | Open a new, empty Pokémon search.               |
 | `type_matchups` | `ctrl+t`    | Go to the Type Matchups tab (Type 1 box).       |
 
-### `[keys.search]` – search screen (Pokédex, Natures and Type Matchups tabs)
+### `[keys.search]` – search screen (Pokédex, Moves, Items, Natures and Type Matchups tabs)
 
 | Action       | Default                        | What it does |
 |--------------|--------------------------------|--------------|
@@ -66,7 +66,7 @@ Notes:
 | `clear`      | `esc`                          | Clear the box; on an empty box, quit. |
 | `next_field` | `tab`                          | Next box **in the same tab** (Type 1 ↔ Type 2). Does nothing in tabs with one box. |
 | `prev_field` | `shift+tab`                    | Previous box in the same tab. |
-| `next_tab`   | `ctrl+l`                       | Next tab (Pokédex → Natures → Type Matchups → Pokédex). |
+| `next_tab`   | `ctrl+l`                       | Next tab (Pokédex → Moves → Items → Natures → Type Matchups → Pokédex). |
 | `prev_tab`   | `ctrl+h`                       | Previous tab. |
 
 ### `[keys.entry]` – Pokémon entry (Overview, Abilities, Moves, Family)

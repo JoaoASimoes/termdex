@@ -10,7 +10,7 @@ first lookup everything is instant and works offline.
 ```
  ◓ Pokédex
 
-  Pokédex     Natures     Type Matchups
+  Pokédex     Moves     Items     Natures     Type Matchups
 
 ╭────────────────────────────────╮ ╭──────────────────────────────────────────────────────────╮
 │ Search Pokémon                 │ │ #0006 Charizard  Gen I                                   │
@@ -62,6 +62,10 @@ first lookup everything is instant and works offline.
     gender forms such as Meowstic or Indeedee) and the female look when it differs (e.g.
     Pikachu). Each one is previewed with its sprite and stats; Enter opens it, and Esc walks
     back through the Pokémon you came from.
+- **Moves** – every move in the games (938), searchable with typos: type, category, power,
+  accuracy, PP, priority, effect chance, effect, description and the Pokémon that learn it.
+- **Items** – every item (2,200+): sprite, category, fling power, attributes, effect,
+  description and the wild Pokémon that may hold it.
 - **Natures** – what each nature does (+10% / −10% stats, liked and disliked berry flavors),
   the full nature chart and a short explanation. Search by name or by stat: `speed` lists
   the natures that raise Speed, `-spa` those that lower Special Attack.
@@ -136,7 +140,7 @@ The help line at the bottom of the TUI always shows the keys currently configure
 | `↑` / `↓`, `ctrl+k` / `ctrl+j` | move through suggestions                                 |
 | `enter`                        | Pokédex: open the full entry · Types: confirm the type   |
 | `tab` / `shift+tab`            | next / previous box **in the same tab** (Type 1 ↔ Type 2); never changes tab |
-| `ctrl+h` / `ctrl+l`            | previous / next tab (Pokédex, Natures, Type Matchups)    |
+| `ctrl+h` / `ctrl+l`            | previous / next tab (Pokédex, Moves, Items, Natures, Type Matchups) |
 | `ctrl+f`                       | new Pokémon search (works on every screen)               |
 | `ctrl+t`                       | go to Type Matchups (works on every screen)              |
 | `esc`                          | clear the field; on an empty field, quit                 |
@@ -202,7 +206,7 @@ internal/
   config/             config file: defaults (default.toml), loading, validation
   tui/                interactive Bubble Tea interface
     model.go          root model, messages and data loading
-    search.go         search screen: Pokédex, Natures and Type Matchups tabs
+    search.go         search screen: Pokédex, Moves, Items, Natures, Type Matchups tabs
     detail.go         Pokémon entry: Overview, Abilities and Moves tabs
     family.go         Family tab: evolutions, forms, gender looks, back history
     render.go         styles, type badges, stat bars, Pokédex card, nature chart
