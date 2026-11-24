@@ -55,7 +55,7 @@ Notes:
 | `quit`          | `ctrl+c`    | Quit.                                           |
 | `search`        | `ctrl+f`    | Open a new, empty Pokémon search.               |
 | `type_matchups` | `ctrl+t`    | Go to the Type Matchups tab (Type 1 box).       |
-| `help`          | `f1`        | Show / hide the help screen with every key of the current screen. |
+| `help`          | `f1`, `?`   | Show / hide the help screen with every key of the current screen. `?` works while typing too: no Pokémon, move, item or nature has a `?` in its name. |
 | `retry`         | `ctrl+r`    | Retry what failed after a network error.        |
 
 ### `[keys.search]` – search screen (Pokédex, Moves, Items, Natures and Type Matchups tabs)
@@ -98,7 +98,6 @@ The same keys work in the lists of Pokémon opened from a move, an item or an ab
 | `back`      | `esc`, `backspace`, `q`          | Back to the previous page, or to the search. |
 | `scroll_up` | `shift+up`, `ctrl+u`             | Scroll the panels up (when they do not fit the terminal). |
 | `scroll_down` | `shift+down`, `ctrl+d`         | Scroll the panels down. |
-| `help`      | `?`                              | Show / hide the help screen (as well as the global `f1`). |
 
 `tab` is not bound here on purpose: the entry screen has no boxes to move between, and tabs
 are switched with `next_tab` / `prev_tab` or the number keys.

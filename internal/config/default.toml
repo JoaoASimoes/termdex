@@ -62,7 +62,7 @@ fairy = "#D685AD"
 quit = ["ctrl+c"]
 search = ["ctrl+f"]          # new Pokémon search
 type_matchups = ["ctrl+t"]   # jump to the Type Matchups tab
-help = ["f1"]                # show / hide the key help of the current screen
+help = ["f1", "?"]           # show / hide the key help (also while typing: no name has a "?")
 retry = ["ctrl+r"]           # retry after a network error
 
 # Search screen (Pokédex, Moves, Items, Natures and Type Matchups tabs). You are typing in a text box
@@ -101,7 +101,6 @@ open = ["enter"]             # open the selected Pokémon / the Pokémon with th
 back = ["esc", "backspace", "q"]
 scroll_up = ["shift+up", "ctrl+u"]     # scroll the panels when they do not fit
 scroll_down = ["shift+down", "ctrl+d"]
-help = ["?"]
 
 # While typing in the move filter.
 [keys.filter]

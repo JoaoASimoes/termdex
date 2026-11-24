@@ -545,7 +545,6 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case tea.KeyPressMsg:
 		k, g := msg.String(), m.keys.Global
-		filtering := m.screen == screenDetail && m.detail.filtering
 
 		// Scrolling the panels; any other key starts again from the top.
 		up, down := m.keys.Search.ScrollUp, m.keys.Search.ScrollDown
@@ -568,7 +567,7 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		// The help screen takes every other key.
 		if m.showHelp {
-			if g.Help.Matches(k) || m.keys.Entry.Help.Matches(k) || k == "esc" || k == "q" {
+			if g.Help.Matches(k) || k == "esc" || k == "q" {
 				m.showHelp = false
 			} else if g.Quit.Matches(k) {
 				return m, tea.Quit
@@ -580,7 +579,7 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch {
 		case g.Quit.Matches(k):
 			return m, tea.Quit
-		case g.Help.Matches(k), m.screen != screenSearch && !filtering && m.keys.Entry.Help.Matches(k):
+		case g.Help.Matches(k): // also while typing: no Pokémon, move or item has a "?"
 			m.showHelp = true
 			return m, nil
 		case g.Retry.Matches(k):

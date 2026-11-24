@@ -171,7 +171,6 @@ type EntryKeys struct {
 	Back       Binding `toml:"back"`
 	ScrollUp   Binding `toml:"scroll_up"`
 	ScrollDown Binding `toml:"scroll_down"`
-	Help       Binding `toml:"help"`
 }
 
 type FilterKeys struct {
@@ -382,7 +381,6 @@ var actionDesc = map[string]string{
 	"entry.back":        "back to the previous page",
 	"entry.scroll_up":   "scroll the panels up",
 	"entry.scroll_down": "scroll the panels down",
-	"entry.help":        "show / hide this help",
 
 	"filter.up":       "previous move",
 	"filter.down":     "next move",
@@ -429,7 +427,7 @@ func (k Keys) HelpFor(screen string) []HelpSection {
 		return []HelpSection{section("Search screen", "search", k.Search), global}
 	case "list":
 		return []HelpSection{section("Pokémon list", "entry", k.Entry,
-			"up", "down", "page_up", "page_down", "top", "bottom", "open", "back", "scroll_up", "scroll_down", "help"), global}
+			"up", "down", "page_up", "page_down", "top", "bottom", "open", "back", "scroll_up", "scroll_down"), global}
 	default:
 		return []HelpSection{section("Pokémon entry", "entry", k.Entry),
 			section("While typing the move filter", "filter", k.Filter), global}

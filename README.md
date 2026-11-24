@@ -77,7 +77,8 @@ first lookup everything is instant and works offline.
 - **Type matchups** – weaknesses, resistances and immunities of one or two types.
 - **Typo tolerant** – misspelled names and types are matched by prefix, edit distance and
   substring (`charizrd` → charizard, `fary` → fairy).
-- **Help screen** – `F1` (or `?` on a Pokémon) lists every key of the current screen.
+- **Help screen** – `?` or `F1`, on any screen (even while typing), lists every key of the
+  current screen.
 - **Small terminals** – panels that do not fit scroll with `shift+↑/↓` (`pgup/pgdown` in the
   search).
 - **Offline friendly** – everything already downloaded works without a connection; when a
