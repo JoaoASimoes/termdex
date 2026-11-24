@@ -55,6 +55,8 @@ Notes:
 | `quit`          | `ctrl+c`    | Quit.                                           |
 | `search`        | `ctrl+f`    | Open a new, empty Pokémon search.               |
 | `type_matchups` | `ctrl+t`    | Go to the Type Matchups tab (Type 1 box).       |
+| `help`          | `f1`        | Show / hide the help screen with every key of the current screen. |
+| `retry`         | `ctrl+r`    | Retry what failed after a network error.        |
 
 ### `[keys.search]` – search screen (Pokédex, Moves, Items, Natures and Type Matchups tabs)
 
@@ -62,14 +64,18 @@ Notes:
 |--------------|--------------------------------|--------------|
 | `up`         | `up`, `ctrl+k`, `ctrl+p`       | Previous suggestion (its result is shown at once). |
 | `down`       | `down`, `ctrl+j`, `ctrl+n`     | Next suggestion. |
-| `confirm`    | `enter`                        | Pokédex: open the full entry. Natures/Types: pick the highlighted entry. |
+| `confirm`    | `enter`                        | Pokédex: open the full entry. Moves/Items: list the Pokémon that learn / hold it. Natures/Types: pick the highlighted entry. |
 | `clear`      | `esc`                          | Clear the box; on an empty box, quit. |
 | `next_field` | `tab`                          | Next box **in the same tab** (Type 1 ↔ Type 2). Does nothing in tabs with one box. |
 | `prev_field` | `shift+tab`                    | Previous box in the same tab. |
 | `next_tab`   | `ctrl+l`                       | Next tab (Pokédex → Moves → Items → Natures → Type Matchups → Pokédex). |
 | `prev_tab`   | `ctrl+h`                       | Previous tab. |
+| `scroll_up`  | `pgup`, `shift+up`             | Scroll the right panel up (when it does not fit the terminal). |
+| `scroll_down`| `pgdown`, `shift+down`         | Scroll the right panel down. |
 
-### `[keys.entry]` – Pokémon entry (Overview, Abilities, Moves, Family)
+### `[keys.entry]` – Pokémon entry (Overview, Abilities, Moves, Family) and Pokémon lists
+
+The same keys work in the lists of Pokémon opened from a move, an item or an ability.
 
 | Action      | Default                          | What it does |
 |-------------|----------------------------------|--------------|
@@ -88,8 +94,11 @@ Notes:
 | `next_game` | `]`, `>`                         | Moves tab: next game. |
 | `prev_game` | `[`, `<`                         | Moves tab: previous game. |
 | `filter`    | `/`                              | Moves tab: start typing a filter. |
-| `open`      | `enter`                          | Family tab: open the selected evolution or form. |
-| `back`      | `esc`, `backspace`, `q`          | Back to the previous Pokémon, or to the search. |
+| `open`      | `enter`                          | Family: open the evolution or form. Moves: list the Pokémon that learn the move. Abilities: list the Pokémon with the ability. Lists: open the Pokémon. |
+| `back`      | `esc`, `backspace`, `q`          | Back to the previous page, or to the search. |
+| `scroll_up` | `shift+up`, `ctrl+u`             | Scroll the panels up (when they do not fit the terminal). |
+| `scroll_down` | `shift+down`, `ctrl+d`         | Scroll the panels down. |
+| `help`      | `?`                              | Show / hide the help screen (as well as the global `f1`). |
 
 `tab` is not bound here on purpose: the entry screen has no boxes to move between, and tabs
 are switched with `next_tab` / `prev_tab` or the number keys.

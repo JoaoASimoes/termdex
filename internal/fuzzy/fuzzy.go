@@ -87,3 +87,32 @@ func Suggest(query string, candidates []string, n int) []string {
 	}
 	return out
 }
+
+// Ranked returns the candidates matching query, best first, in four tiers: exact match,
+// prefix, similar spelling (typos), then substring. Within a tier the candidates keep
+// their input order, so a list already sorted (e.g. by Pokédex number) stays sorted.
+// At most n results are returned.
+func Ranked(query string, candidates []string, n int) []string {
+	q := Normalize(query)
+	if q == "" {
+		return nil
+	}
+	var exact, prefix, close, substr []string
+	for _, c := range candidates {
+		switch {
+		case c == q:
+			exact = append(exact, c)
+		case strings.HasPrefix(c, q):
+			prefix = append(prefix, c)
+		case strings.Contains(c, q):
+			substr = append(substr, c)
+		case similarity(q, c) >= 0.6:
+			close = append(close, c)
+		}
+	}
+	out := append(append(append(exact, prefix...), close...), substr...)
+	if len(out) > n {
+		out = out[:n]
+	}
+	return out
+}

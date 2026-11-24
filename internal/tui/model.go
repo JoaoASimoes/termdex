@@ -2,10 +2,8 @@
 package tui
 
 import (
+	"errors"
 	"fmt"
-	"github.com/JoaoASimoes/pokedex/internal/config"
-	"github.com/JoaoASimoes/pokedex/internal/dex"
-	"github.com/JoaoASimoes/pokedex/internal/sprite"
 	"image"
 	"time"
 
@@ -13,17 +11,24 @@ import (
 	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+
+	"github.com/JoaoASimoes/pokedex/internal/config"
+	"github.com/JoaoASimoes/pokedex/internal/dex"
+	"github.com/JoaoASimoes/pokedex/internal/sprite"
 )
 
-// The TUI has two screens:
-//   - search: the Pokédex search (with a live entry preview) and the type-matchup search;
-//   - detail: a Pokémon's full entry, with Overview / Abilities / Moves tabs.
+// The TUI has three screens:
+//   - search: the Pokédex, Moves, Items, Natures and Type Matchups tabs;
+//   - detail: a Pokémon's full entry (Overview, Abilities, Moves, Family tabs);
+//   - list: the Pokémon related to a move, item or ability.
+// The help screen can be shown on top of any of them.
 
 type screen int
 
 const (
 	screenSearch screen = iota
 	screenDetail
+	screenList
 )
 
 const (
@@ -38,9 +43,23 @@ const (
 type dataLoadedMsg struct{ err error }
 
 type pokemonLoadedMsg struct {
-	seq int
-	p   dex.Pokemon
-	err error
+	seq  int
+	name string
+	p    dex.Pokemon
+	err  error
+}
+
+// listPreviewMsg fires after a short pause on a Pokémon of a list page.
+type listPreviewMsg struct {
+	seq  int
+	name string
+}
+
+// filterLoadedMsg carries the members of a Pokédex filter ("type:fire", "gen:1").
+type filterLoadedMsg struct {
+	key   string
+	names []string
+	err   error
 }
 
 type previewMsg struct {
@@ -111,7 +130,27 @@ type tuiModel struct {
 
 	search  searchState
 	detail  detailState
-	history []detailState // Pokémon entries to return to with Esc
+	list    listState
+	history []page // pages to return to with the back key
+
+	openOnLoad     string // Pokémon to open (from a list/Family) once it is loaded
+	openListOnLoad string // "move:<name>" etc. to open as a list once loaded
+	listFromSearch bool
+	listSeq        int // bumped on every list preview; stale ones are ignored
+
+	showHelp bool
+	scroll   int      // scroll offset of the panels (see scroll.go)
+	ui       *uiState // written by View
+
+	// retry re-runs whatever failed last (network errors); nil when nothing failed.
+	retry       func(m *tuiModel) tea.Cmd
+	failedMoves map[string]bool
+
+	// Pokédex order and filters (see dexorder.go).
+	dexOrder   []string
+	dexRank    map[string]int
+	dexNum     map[string]int
+	filterSets map[string]map[string]bool
 
 	// Session caches (the disk cache sits behind these).
 	pokeCache  map[string]dex.Pokemon
@@ -135,6 +174,7 @@ type tuiModel struct {
 }
 
 func newTUIModel(d *dex.Client, cfg config.Config) tuiModel {
+	applyTheme(cfg.Colors)
 	return tuiModel{
 		data:         d,
 		keys:         cfg.Keys,
@@ -150,6 +190,9 @@ func newTUIModel(d *dex.Client, cfg config.Config) tuiModel {
 		spriteImgs:   map[string]image.Image{},
 		spriteStr:    map[string]string{},
 		pending:      map[string]bool{},
+		failedMoves:  map[string]bool{},
+		filterSets:   map[string]map[string]bool{},
+		ui:           &uiState{},
 	}
 }
 
@@ -172,11 +215,23 @@ func loadDataCmd(d *dex.Client) tea.Cmd {
 func loadPokemonCmd(d *dex.Client, seq int, name string) tea.Cmd {
 	return func() tea.Msg {
 		p, err := d.Pokemon(name)
-		return pokemonLoadedMsg{seq, p, err}
+		return pokemonLoadedMsg{seq, name, p, err}
 	}
 }
 
 func (m *tuiModel) spin() tea.Cmd { return m.spinner.Tick }
+
+// fail reports a failed download. Network errors get a friendly "offline" message; in
+// every case the retry key re-runs retry.
+func (m *tuiModel) fail(what string, err error, retry func(m *tuiModel) tea.Cmd) {
+	m.loading = ""
+	if errors.Is(err, dex.ErrNetwork) {
+		m.status = "Can't reach PokeAPI – you seem to be offline. Everything already cached still works."
+	} else {
+		m.status = "Could not load " + what + ": " + err.Error()
+	}
+	m.retry = retry
+}
 
 func (m *tuiModel) fetchAbility(name string) tea.Cmd {
 	key := "ability:" + name
@@ -305,11 +360,39 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case dataLoadedMsg:
 		m.loading = ""
 		if msg.err != nil {
-			m.status = "Could not load data: " + msg.err.Error()
+			m.fail("data", msg.err, func(m *tuiModel) tea.Cmd {
+				m.loading = "Loading data from PokeAPI…"
+				return tea.Batch(m.spin(), loadDataCmd(m.data))
+			})
 			return m, nil
 		}
 		m.dataReady = true
+		m.buildDexOrder()
 		m.refreshSuggestions()
+		return m, m.preview()
+
+	case listPreviewMsg:
+		if msg.seq != m.listSeq {
+			return m, nil
+		}
+		return m, m.loadRelated(msg.name)
+
+	case filterLoadedMsg:
+		delete(m.pending, "filter:"+msg.key)
+		if msg.err != nil {
+			key := msg.key
+			m.fail("the "+key+" filter", msg.err, func(m *tuiModel) tea.Cmd { return m.fetchFilter(key) })
+			return m, nil
+		}
+		set := make(map[string]bool, len(msg.names))
+		for _, n := range msg.names {
+			set[n] = true
+		}
+		m.filterSets[msg.key] = set
+		if m.search.focus == fieldPokemon {
+			m.refreshSuggestions()
+			return m, m.preview()
+		}
 		return m, nil
 
 	case previewMsg:
@@ -328,8 +411,14 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		m.loading = ""
 		if msg.err != nil {
-			m.status = "Could not load Pokémon: " + msg.err.Error()
+			name, open := msg.name, m.search.openOnLoad == msg.name
 			m.search.openOnLoad = ""
+			m.fail(dex.DisplayName(name), msg.err, func(m *tuiModel) tea.Cmd {
+				if open {
+					m.search.openOnLoad = name
+				}
+				return m.showPokemon(name, false)
+			})
 			return m, nil
 		}
 		p := msg.p
@@ -343,33 +432,40 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case relatedLoadedMsg:
 		delete(m.pending, "pokemon:"+msg.name)
 		if msg.err != nil {
-			m.status = "Could not load Pokémon: " + msg.err.Error()
+			name := msg.name
+			m.fail(dex.DisplayName(name), msg.err, func(m *tuiModel) tea.Cmd { return m.loadRelated(name) })
 			return m, nil
 		}
 		m.pokeCache[msg.name] = msg.p
-		if m.screen == screenDetail && m.detail.openOnLoad == msg.name {
-			return m, m.openRelated(msg.p)
+		if m.openOnLoad == msg.name {
+			m.openOnLoad = ""
+			m.pushPage()
+			return m, m.openDetail(msg.p)
 		}
 		return m, m.fetchSprite(msg.p)
 
 	case spriteLoadedMsg:
 		delete(m.pending, "sprite:"+msg.name)
-		m.spriteImgs[msg.name] = msg.img // nil on error: shown without a sprite
+		if errors.Is(msg.err, dex.ErrNetwork) {
+			return m, nil // not remembered: tried again next time it is shown
+		}
+		m.spriteImgs[msg.name] = msg.img // nil on other errors: shown without a sprite
 		return m, nil
 
 	case abilityLoadedMsg:
 		delete(m.pending, "ability:"+msg.name)
 		if msg.err != nil {
-			m.status = "Could not load ability: " + msg.err.Error()
-		} else {
-			m.abilities[msg.name] = msg.info
+			name := msg.name
+			m.fail("the ability", msg.err, func(m *tuiModel) tea.Cmd { return m.fetchAbility(name) })
+			return m, nil
 		}
-		return m, nil
+		m.abilities[msg.name] = msg.info
+		return m, m.reopenListIfWaiting("ability", msg.name)
 
 	case naturesLoadedMsg:
 		delete(m.pending, "natures")
 		if msg.err != nil {
-			m.status = "Could not load natures: " + msg.err.Error()
+			m.fail("natures", msg.err, func(m *tuiModel) tea.Cmd { return m.fetchNatures() })
 			return m, nil
 		}
 		m.natures = msg.natures
@@ -381,10 +477,21 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case moveLoadedMsg:
 		delete(m.pending, "move:"+msg.name)
-		if msg.err == nil {
-			m.moves[msg.name] = msg.info
+		if msg.err != nil {
+			m.failedMoves[msg.name] = true
+			m.fail("moves", msg.err, func(m *tuiModel) tea.Cmd {
+				var cmds []tea.Cmd
+				for name := range m.failedMoves {
+					cmds = append(cmds, m.fetchMove(name))
+				}
+				m.failedMoves = map[string]bool{}
+				return tea.Batch(append(cmds, m.spin())...)
+			})
+			return m, nil
 		}
-		return m, nil
+		delete(m.failedMoves, msg.name)
+		m.moves[msg.name] = msg.info
+		return m, m.reopenListIfWaiting("move", msg.name)
 
 	case catalogLoadedMsg:
 		if msg.kind == fieldItem {
@@ -393,7 +500,8 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			delete(m.pending, "catalog:moves")
 		}
 		if msg.err != nil {
-			m.status = "Could not load the list: " + msg.err.Error()
+			kind := msg.kind
+			m.fail("the list", msg.err, func(m *tuiModel) tea.Cmd { return m.fetchCatalog(kind) })
 			return m, nil
 		}
 		if msg.kind == fieldItem {
@@ -419,11 +527,13 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case itemLoadedMsg:
 		delete(m.pending, "item:"+msg.name)
 		if msg.err != nil {
-			m.status = "Could not load item: " + msg.err.Error()
+			name := msg.name
+			m.fail("the item", msg.err, func(m *tuiModel) tea.Cmd { return m.fetchItem(name) })
 			return m, nil
 		}
 		m.items[msg.name] = msg.info
-		return m, m.fetchSpriteKey(itemSpriteKey(msg.name), msg.info.Sprite)
+		return m, tea.Batch(m.fetchSpriteKey(itemSpriteKey(msg.name), msg.info.Sprite),
+			m.reopenListIfWaiting("item", msg.name))
 
 	case spinner.TickMsg:
 		if m.loading == "" && len(m.pending) == 0 {
@@ -434,11 +544,52 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, cmd
 
 	case tea.KeyPressMsg:
-		// Global shortcuts, available on every screen.
 		k, g := msg.String(), m.keys.Global
+		filtering := m.screen == screenDetail && m.detail.filtering
+
+		// Scrolling the panels; any other key starts again from the top.
+		up, down := m.keys.Search.ScrollUp, m.keys.Search.ScrollDown
+		if m.screen != screenSearch && !m.showHelp {
+			up, down = m.keys.Entry.ScrollUp, m.keys.Entry.ScrollDown
+		}
+		if m.showHelp {
+			up = append(append(config.Binding{}, up...), "up", "k")
+			down = append(append(config.Binding{}, down...), "down", "j")
+		}
+		switch {
+		case up.Matches(k):
+			m.scrollBy(-scrollStep)
+			return m, nil
+		case down.Matches(k):
+			m.scrollBy(scrollStep)
+			return m, nil
+		}
+		m.scroll = 0
+
+		// The help screen takes every other key.
+		if m.showHelp {
+			if g.Help.Matches(k) || m.keys.Entry.Help.Matches(k) || k == "esc" || k == "q" {
+				m.showHelp = false
+			} else if g.Quit.Matches(k) {
+				return m, tea.Quit
+			}
+			return m, nil
+		}
+
+		// Global shortcuts, available on every screen.
 		switch {
 		case g.Quit.Matches(k):
 			return m, tea.Quit
+		case g.Help.Matches(k), m.screen != screenSearch && !filtering && m.keys.Entry.Help.Matches(k):
+			m.showHelp = true
+			return m, nil
+		case g.Retry.Matches(k):
+			if m.retry != nil {
+				retry := m.retry
+				m.retry, m.status = nil, ""
+				return m, retry(&m)
+			}
+			return m, nil
 		case g.Search.Matches(k): // new Pokémon search
 			m.screen = screenSearch
 			m.search.inputs[fieldPokemon].SetValue("")
@@ -449,8 +600,11 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	}
 
-	if m.screen == screenDetail {
+	switch m.screen {
+	case screenDetail:
 		return m.updateDetail(msg)
+	case screenList:
+		return m.updateList(msg)
 	}
 	return m.updateSearch(msg)
 }
@@ -458,10 +612,18 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 // ----------------------------------------------------------------------------- view
 
 func (m tuiModel) View() tea.View {
+	if m.ui != nil {
+		m.ui.maxScroll = 0 // set again by clip while drawing
+	}
 	var content string
-	if m.screen == screenDetail {
+	switch {
+	case m.showHelp:
+		content = m.viewHelp()
+	case m.screen == screenDetail:
 		content = m.viewDetail()
-	} else {
+	case m.screen == screenList:
+		content = m.viewList()
+	default:
 		content = m.viewSearch()
 	}
 	v := tea.NewView(content)
@@ -485,6 +647,9 @@ func (m tuiModel) footer(help string) string {
 		status = m.spinner.View() + " " + m.loading
 	case m.status != "":
 		status = errStyle.Render(m.status)
+		if m.retry != nil {
+			status += labelStyle.Render(" · ") + selectedStyle.Render(m.keys.Global.Retry.Key(0)) + labelStyle.Render(" retry")
+		}
 	}
 	h := helpStyle.Render(help)
 	if m.width > 0 && lipgloss.Width(help) > m.width {

@@ -47,3 +47,15 @@ func TestSuggest(t *testing.T) {
 		t.Errorf("Suggest(xyzxyz) = %v, want none", got)
 	}
 }
+
+func TestRankedKeepsInputOrderWithinTiers(t *testing.T) {
+	// Pokédex order: mewtwo (#150) comes before mew (#151).
+	dex := []string{"pikachu", "mewtwo", "mew", "chimecho"}
+	got := Ranked("mew", dex, 10)
+	if want := []string{"mew", "mewtwo"}; !reflect.DeepEqual(got, want) {
+		t.Errorf("Ranked(mew) = %v, want %v (exact first, then prefix in input order)", got, want)
+	}
+	if got := Ranked("pikchu", dex, 10); len(got) == 0 || got[0] != "pikachu" {
+		t.Errorf("Ranked(pikchu) = %v, want pikachu first", got)
+	}
+}

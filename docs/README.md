@@ -1,7 +1,7 @@
 # Pokédex documentation
 
 - [Configuration](configuration.md) – the config file, `pokedex config` commands,
-  general options, command-line flags, environment variables and the cache.
+  general options, colours, command-line flags, environment variables and the cache.
 - [Key bindings](keybindings.md) – every action of the TUI, its default keys, key names
   and how to rebind them.
 

@@ -155,7 +155,7 @@ func cmdPokemon(d *dex.Client, query string, ask prompter, sprites bool) (bool, 
 			lipgloss.Println(sprite.Render(img, 32, 16))
 		}
 	}
-	fmt.Println(bold(fmt.Sprintf("#%d %s", p.ID, dex.DisplayName(p.Name))))
+	fmt.Println(bold(fmt.Sprintf("#%d %s", p.Number(), dex.DisplayName(p.Name))))
 	printChart(chart, p.Types)
 	if notes := dex.AbilityWarnings(p.AbilityNames()); len(notes) > 0 {
 		fmt.Println(yellow("  Note – abilities that may change this: ") + strings.Join(notes, "; "))

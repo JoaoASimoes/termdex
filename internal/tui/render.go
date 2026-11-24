@@ -2,52 +2,80 @@ package tui
 
 import (
 	"fmt"
-	"github.com/JoaoASimoes/pokedex/internal/dex"
+	"image/color"
 	"strings"
 
 	"charm.land/lipgloss/v2"
+
+	"github.com/JoaoASimoes/pokedex/internal/config"
+	"github.com/JoaoASimoes/pokedex/internal/dex"
 )
 
 // ----------------------------------------------------------------------------- styles
 
+// The styles below are built by applyTheme from the configured colours.
 var (
-	accent    = lipgloss.Color("#E3350D") // Pokédex red
-	accentAlt = lipgloss.Color("#FFCB05")
-	subtle    = lipgloss.Color("#6C6C6C")
-	errColor  = lipgloss.Color("#FF5F5F")
-	warnColor = lipgloss.Color("#FFD75F")
+	accent    color.Color
+	accentAlt color.Color
+	subtle    color.Color
 
-	titleStyle    = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#FFFFFF")).Background(accent).Padding(0, 1)
-	subtitleStyle = lipgloss.NewStyle().Foreground(subtle)
-	labelStyle    = lipgloss.NewStyle().Foreground(subtle)
-	labelFocused  = lipgloss.NewStyle().Foreground(accent).Bold(true)
-	selectedStyle = lipgloss.NewStyle().Foreground(accent).Bold(true)
-	helpStyle     = lipgloss.NewStyle().Foreground(subtle)
-	errStyle      = lipgloss.NewStyle().Foreground(errColor)
-	warnStyle     = lipgloss.NewStyle().Foreground(warnColor)
-	headingStyle  = lipgloss.NewStyle().Bold(true)
-	sectionStyle  = lipgloss.NewStyle().Bold(true).Foreground(accentAlt)
-	flavorStyle   = lipgloss.NewStyle().Italic(true).Foreground(lipgloss.Color("#A8A8A8"))
+	titleStyle, subtitleStyle, labelStyle, labelFocused, selectedStyle, helpStyle lipgloss.Style
+	errStyle, warnStyle, headingStyle, sectionStyle, flavorStyle                  lipgloss.Style
+	panelStyle, panelFocusedStyle, tabActive, tabInactive, accentBlock            lipgloss.Style
 
-	panelStyle        = lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(subtle).Padding(0, 1)
-	panelFocusedStyle = panelStyle.BorderForeground(accent)
-
-	tabActive   = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#FFFFFF")).Background(accent).Padding(0, 2)
-	tabInactive = lipgloss.NewStyle().Foreground(subtle).Padding(0, 2)
+	typeBg = map[string]string{} // type -> badge background
 )
 
-// Classic type colors; light backgrounds get dark text.
-var typeBg = map[string]string{
-	"normal": "#A8A77A", "fire": "#EE8130", "water": "#6390F0", "electric": "#F7D02C",
-	"grass": "#7AC74C", "ice": "#96D9D6", "fighting": "#C22E28", "poison": "#A33EA1",
-	"ground": "#E2BF65", "flying": "#A98FF3", "psychic": "#F95587", "bug": "#A6B91A",
-	"rock": "#B6A136", "ghost": "#735797", "dragon": "#6F35FC", "dark": "#705746",
-	"steel": "#B7B7CE", "fairy": "#D685AD",
+func init() { applyTheme(config.Default().Colors) }
+
+// applyTheme (re)builds every style from the configured colours.
+func applyTheme(c config.Colors) {
+	accent = lipgloss.Color(c.Accent)
+	accentAlt = lipgloss.Color(c.Heading)
+	subtle = lipgloss.Color(c.Muted)
+	onAccent := lipgloss.Color(c.AccentText)
+
+	titleStyle = lipgloss.NewStyle().Bold(true).Foreground(onAccent).Background(accent).Padding(0, 1)
+	accentBlock = lipgloss.NewStyle().Bold(true).Foreground(onAccent).Background(accent)
+	subtitleStyle = lipgloss.NewStyle().Foreground(subtle)
+	labelStyle = lipgloss.NewStyle().Foreground(subtle)
+	labelFocused = lipgloss.NewStyle().Foreground(accent).Bold(true)
+	selectedStyle = lipgloss.NewStyle().Foreground(accent).Bold(true)
+	helpStyle = lipgloss.NewStyle().Foreground(subtle)
+	errStyle = lipgloss.NewStyle().Foreground(lipgloss.Color(c.Error))
+	warnStyle = lipgloss.NewStyle().Foreground(lipgloss.Color(c.Warning))
+	headingStyle = lipgloss.NewStyle().Bold(true)
+	sectionStyle = lipgloss.NewStyle().Bold(true).Foreground(accentAlt)
+	flavorStyle = lipgloss.NewStyle().Italic(true).Foreground(lipgloss.Color(c.Flavor))
+
+	panelStyle = lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(subtle).Padding(0, 1)
+	panelFocusedStyle = panelStyle.BorderForeground(accent)
+
+	tabActive = lipgloss.NewStyle().Bold(true).Foreground(onAccent).Background(accent).Padding(0, 2)
+	tabInactive = lipgloss.NewStyle().Foreground(subtle).Padding(0, 2)
+
+	typeBg = map[string]string{}
+	for t, col := range c.Types {
+		typeBg[t] = col
+	}
 }
 
+// Default light backgrounds that need dark text (used for ANSI-number colours, whose
+// brightness is unknown).
 var darkText = map[string]bool{
 	"normal": true, "electric": true, "grass": true, "ice": true, "ground": true,
 	"bug": true, "rock": true, "steel": true, "fairy": true, "fire": true,
+}
+
+// lightBackground reports whether text on bg should be dark.
+func lightBackground(t, bg string) bool {
+	if len(bg) == 7 && bg[0] == '#' {
+		var r, g, b int
+		if _, err := fmt.Sscanf(bg[1:], "%02x%02x%02x", &r, &g, &b); err == nil {
+			return r*299+g*587+b*114 > 140*1000 // perceived brightness
+		}
+	}
+	return darkText[t]
 }
 
 func typeStyle(t string) lipgloss.Style {
@@ -56,7 +84,7 @@ func typeStyle(t string) lipgloss.Style {
 		bg = "#777777"
 	}
 	fg := "#FFFFFF"
-	if darkText[t] {
+	if lightBackground(t, bg) {
 		fg = "#1C1C1C"
 	}
 	return lipgloss.NewStyle().Background(lipgloss.Color(bg)).Foreground(lipgloss.Color(fg)).Bold(true)
@@ -174,7 +202,7 @@ func renderStats(p dex.Pokemon, width int) string {
 }
 
 func renderHeader(p dex.Pokemon) string {
-	title := headingStyle.Render(fmt.Sprintf("#%04d %s", p.ID, dex.DisplayName(p.Name)))
+	title := headingStyle.Render(fmt.Sprintf("#%04d %s", p.Number(), dex.DisplayName(p.Name)))
 	var tags []string
 	if p.Legendary {
 		tags = append(tags, warnStyle.Render("Legendary"))
@@ -397,7 +425,7 @@ func renderNatureGrid(natures []dex.Nature, selected string) string {
 			}
 			switch {
 			case ok && n.Name == selected:
-				b.WriteString(lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#FFFFFF")).Background(accent).Render(fmt.Sprintf("%-*s", cellW-1, name)) + " ")
+				b.WriteString(accentBlock.Render(fmt.Sprintf("%-*s", cellW-1, name)) + " ")
 			case inc == dec:
 				b.WriteString(labelStyle.Render(cell(name)))
 			default:

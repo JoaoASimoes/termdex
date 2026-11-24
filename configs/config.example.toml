@@ -18,6 +18,40 @@ preview_delay_ms = 150
 # Show pixel-art sprites (TUI and the `pokemon` subcommand).
 sprites = true
 
+# Colours of the interactive interface. Each value is "#RRGGBB" (24-bit colour) or an
+# ANSI colour number from "0" to "255". The subcommands' plain-text output keeps its own
+# colours.
+[colors]
+accent = "#E3350D"           # title bar, active tab, selected row, focused panel border
+accent_text = "#FFFFFF"      # text drawn on the accent colour (title, active tab)
+heading = "#FFCB05"          # section titles ("Base stats", "Evolution"…)
+muted = "#6C6C6C"            # labels, help line and panel borders
+error = "#FF5F5F"            # error messages
+warning = "#FFD75F"          # warnings (abilities that change matchups, Legendary…)
+flavor = "#A8A8A8"           # Pokédex, move and item descriptions
+
+# Background of each type badge. The text colour (dark or light) is picked automatically
+# for contrast when the value is "#RRGGBB".
+[colors.types]
+normal = "#A8A77A"
+fire = "#EE8130"
+water = "#6390F0"
+electric = "#F7D02C"
+grass = "#7AC74C"
+ice = "#96D9D6"
+fighting = "#C22E28"
+poison = "#A33EA1"
+ground = "#E2BF65"
+flying = "#A98FF3"
+psychic = "#F95587"
+bug = "#A6B91A"
+rock = "#B6A136"
+ghost = "#735797"
+dragon = "#6F35FC"
+dark = "#705746"
+steel = "#B7B7CE"
+fairy = "#D685AD"
+
 # Key bindings: each action takes a list of keys. Setting an action replaces all of its
 # default keys. Key names: "a", "G", "/", "enter", "esc", "tab", "shift+tab", "space",
 # "backspace", "up", "down", "left", "right", "pgup", "pgdown", "home", "end", "f1"…,
@@ -28,6 +62,8 @@ sprites = true
 quit = ["ctrl+c"]
 search = ["ctrl+f"]          # new Pokémon search
 type_matchups = ["ctrl+t"]   # jump to the Type Matchups tab
+help = ["f1"]                # show / hide the key help of the current screen
+retry = ["ctrl+r"]           # retry after a network error
 
 # Search screen (Pokédex, Moves, Items, Natures and Type Matchups tabs). You are typing in a text box
 # here, so avoid plain letters: they could no longer be typed.
@@ -40,8 +76,11 @@ next_field = ["tab"]         # next box in the same tab (Type 1 <-> Type 2)
 prev_field = ["shift+tab"]
 next_tab = ["ctrl+l"]
 prev_tab = ["ctrl+h"]
+scroll_up = ["pgup", "shift+up"]      # scroll the right panel when it does not fit
+scroll_down = ["pgdown", "shift+down"]
 
-# Pokémon entry screen (Overview, Abilities, Moves and Family tabs).
+# Pokémon entry screen (Overview, Abilities, Moves and Family tabs), also used by the
+# lists of Pokémon opened from a move, item or ability.
 [keys.entry]
 up = ["up", "k", "ctrl+k", "ctrl+p"]
 down = ["down", "j", "ctrl+j", "ctrl+n"]
@@ -58,8 +97,11 @@ family = ["4", "f"]
 next_game = ["]", ">"]       # Moves tab: next game
 prev_game = ["[", "<"]       # Moves tab: previous game
 filter = ["/"]               # Moves tab: filter the move list
-open = ["enter"]             # Family tab: open the selected Pokémon
+open = ["enter"]             # open the selected Pokémon / the Pokémon with that move or ability
 back = ["esc", "backspace", "q"]
+scroll_up = ["shift+up", "ctrl+u"]     # scroll the panels when they do not fit
+scroll_down = ["shift+down", "ctrl+d"]
+help = ["?"]
 
 # While typing in the move filter.
 [keys.filter]

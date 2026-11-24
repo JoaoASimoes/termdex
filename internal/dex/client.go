@@ -11,6 +11,8 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
+	"strings"
 	"sync"
 	"time"
 )
@@ -27,6 +29,9 @@ type Options struct {
 var ignoredTypes = map[string]bool{"unknown": true, "shadow": true, "stellar": true}
 
 var ErrNotFound = errors.New("not found")
+
+// ErrNetwork wraps failures to reach PokeAPI (offline, DNS, timeouts…).
+var ErrNetwork = errors.New("network error")
 
 // TypeChart maps defending type -> attacking type -> multiplier (only entries != 1).
 type TypeChart map[string]map[string]float64
@@ -45,6 +50,24 @@ type Client struct {
 	typeNames    []string
 	pokemonNames []string
 	pokemonSet   map[string]bool
+	pokemonIDs   map[string]int
+}
+
+// PokemonEntry is one row of the Pokémon list: forms have IDs from 10001 up.
+type PokemonEntry struct {
+	Name string `json:"name"`
+	ID   int    `json:"id"`
+}
+
+// PokemonID returns the PokeAPI id of a Pokémon (0 if unknown); species ids are their
+// National Pokédex numbers.
+func (d *Client) PokemonID(name string) int { return d.pokemonIDs[name] }
+
+// idFromURL extracts the trailing number of ".../pokemon/25/".
+func idFromURL(u string) int {
+	u = strings.TrimSuffix(u, "/")
+	n, _ := strconv.Atoi(u[strings.LastIndex(u, "/")+1:])
+	return n
 }
 
 func NewClient(opts Options) *Client {
@@ -79,7 +102,7 @@ func (d *Client) get(url string, out any) error {
 	defer func() { <-d.sem }()
 	resp, err := d.client.Do(req)
 	if err != nil {
-		return fmt.Errorf("network error: %w", err)
+		return fmt.Errorf("%w: %v", ErrNetwork, err)
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode == http.StatusNotFound {
@@ -202,20 +225,26 @@ func (d *Client) PokemonNames() ([]string, error) {
 	if d.pokemonNames != nil {
 		return d.pokemonNames, nil
 	}
-	names, err := cached(d, "pokemon_names", func() ([]string, error) {
+	index, err := cached(d, "pokemon_index", func() ([]PokemonEntry, error) {
 		d.progress("Downloading Pokémon list from PokeAPI...")
 		var listing struct{ Results []namedURL }
 		if err := d.get(apiBase+"/pokemon?limit=100000", &listing); err != nil {
 			return nil, err
 		}
-		out := make([]string, len(listing.Results))
+		out := make([]PokemonEntry, len(listing.Results))
 		for i, p := range listing.Results {
-			out[i] = p.Name
+			out[i] = PokemonEntry{Name: p.Name, ID: idFromURL(p.URL)}
 		}
 		return out, nil
 	})
 	if err != nil {
 		return nil, err
+	}
+	d.pokemonIDs = make(map[string]int, len(index))
+	names := make([]string, len(index))
+	for i, e := range index {
+		names[i] = e.Name
+		d.pokemonIDs[e.Name] = e.ID
 	}
 	d.pokemonNames = names
 	d.pokemonSet = make(map[string]bool, len(names))
@@ -240,12 +269,23 @@ func (d *Client) IsPokemon(name string) bool { return d.pokemonSet[name] }
 // Chart returns the type chart, once Types has loaded it.
 func (d *Client) Chart() TypeChart { return d.types }
 
-// NewOfflineClient returns a client preloaded with Pokémon names and a type chart,
-// without network access or cache. Useful for tests.
+// NewOfflineClient returns a client preloaded with Pokémon names (numbered 1, 2, 3… in
+// list order) and a type chart, without network access or cache. Useful for tests.
 func NewOfflineClient(names []string, chart TypeChart) *Client {
-	d := &Client{types: chart, pokemonNames: names, pokemonSet: map[string]bool{}}
-	for _, n := range names {
-		d.pokemonSet[n] = true
+	entries := make([]PokemonEntry, len(names))
+	for i, n := range names {
+		entries[i] = PokemonEntry{Name: n, ID: i + 1}
+	}
+	return NewOfflineClientIDs(entries, chart)
+}
+
+// NewOfflineClientIDs is NewOfflineClient with explicit PokeAPI ids.
+func NewOfflineClientIDs(entries []PokemonEntry, chart TypeChart) *Client {
+	d := &Client{types: chart, pokemonSet: map[string]bool{}, pokemonIDs: map[string]int{}}
+	for _, e := range entries {
+		d.pokemonNames = append(d.pokemonNames, e.Name)
+		d.pokemonSet[e.Name] = true
+		d.pokemonIDs[e.Name] = e.ID
 	}
 	for t := range chart {
 		d.typeNames = append(d.typeNames, t)

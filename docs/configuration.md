@@ -47,7 +47,7 @@ you what is wrong when:
 
 - the TOML is invalid;
 - a setting is unknown (usually a typo, e.g. `[keys.serch]` or `donw = [...]`);
-- a value is out of range (see the table below);
+- a value is out of range (see the table below), or a colour is not `#RRGGBB`/`0`–`255`;
 - the same key is bound to two actions that are active on the same screen (for example
   `ctrl+f` for both `keys.global.search` and `keys.search.down`).
 
@@ -71,6 +71,46 @@ max_requests = 4
 preview_delay_ms = 80
 sprites = false
 ```
+
+## `[colors]` – colours of the interface
+
+Every colour of the TUI can be changed. Values are either `"#RRGGBB"` (24-bit colour) or an
+ANSI colour number `"0"`–`"255"` (useful for terminals without 24-bit colour, or to follow
+your terminal's palette: `"1"` is its red, `"4"` its blue…).
+
+| Setting       | Default   | Used for |
+|---------------|-----------|----------|
+| `accent`      | `#E3350D` | Title bar, active tab, selected row, focused panel border, the back-key badge, the selected nature in the chart, the loading spinner. |
+| `accent_text` | `#FFFFFF` | Text drawn on the accent colour (title bar, active tab, back-key badge). |
+| `heading`     | `#FFCB05` | Section titles ("Base stats", "Evolution", "In short"…). |
+| `muted`       | `#6C6C6C` | Labels, help line, inactive tabs, panel borders. |
+| `error`       | `#FF5F5F` | Error messages. |
+| `warning`     | `#FFD75F` | Warnings: abilities that change matchups, Legendary/Mythical tags. |
+| `flavor`      | `#A8A8A8` | Descriptions of Pokémon, moves and items (in italics). |
+
+### `[colors.types]` – type badges
+
+The background of each type badge: `normal`, `fire`, `water`, `electric`, `grass`, `ice`,
+`fighting`, `poison`, `ground`, `flying`, `psychic`, `bug`, `rock`, `ghost`, `dragon`,
+`dark`, `steel`, `fairy`. Types you do not set keep their default (the classic colours from
+the games, listed in the default config). With `"#RRGGBB"` values the badge text is made
+dark or light automatically for contrast; with ANSI numbers the default choice is kept.
+
+```toml
+# A blue theme that follows the terminal palette for the basics
+[colors]
+accent = "#1E66F5"
+heading = "#40A0FF"
+muted = "8"          # the terminal's "bright black"
+
+[colors.types]
+fire = "#FF6B35"
+```
+
+Not configurable: the multiplier colours (4×, 2×, ½×…), the stat bar gradient, the
+physical/special/status colours and sprite colours. The subcommands' plain-text output
+(`pokedex pokemon …`) uses the terminal's 256-colour palette and is not affected by
+`[colors]`; turn colours off there with `NO_COLOR=1`.
 
 ## `[keys.*]` – key bindings
 

@@ -1,6 +1,9 @@
 package dex
 
-import "sort"
+import (
+	"fmt"
+	"sort"
+)
 
 // Catalogs: the full lists of moves and items, for browsing them on their own.
 
@@ -84,5 +87,41 @@ func (d *Client) Item(name string) (ItemInfo, error) {
 			it.HeldBy = append(it.HeldBy, h.Pokemon.Name)
 		}
 		return it, nil
+	})
+}
+
+// PokemonOfType returns every Pokémon (forms included) that has type t (cached).
+func (d *Client) PokemonOfType(t string) ([]string, error) {
+	return cached(d, "type_members_"+t, func() ([]string, error) {
+		var raw struct {
+			Pokemon []struct {
+				Pokemon namedURL
+			}
+		}
+		if err := d.get(apiBase+"/type/"+t, &raw); err != nil {
+			return nil, err
+		}
+		out := make([]string, len(raw.Pokemon))
+		for i, p := range raw.Pokemon {
+			out[i] = p.Pokemon.Name
+		}
+		return out, nil
+	})
+}
+
+// SpeciesOfGeneration returns the species introduced in generation n (1-9…, cached).
+func (d *Client) SpeciesOfGeneration(n int) ([]string, error) {
+	return cached(d, fmt.Sprintf("generation_%d", n), func() ([]string, error) {
+		var raw struct {
+			PokemonSpecies []namedURL `json:"pokemon_species"`
+		}
+		if err := d.get(fmt.Sprintf("%s/generation/%d", apiBase, n), &raw); err != nil {
+			return nil, err
+		}
+		out := make([]string, len(raw.PokemonSpecies))
+		for i, s := range raw.PokemonSpecies {
+			out[i] = s.Name
+		}
+		return out, nil
 	})
 }

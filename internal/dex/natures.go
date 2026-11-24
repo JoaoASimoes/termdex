@@ -41,67 +41,73 @@ var statAliases = map[string]string{
 }
 
 var (
-	naturesOnce sync.Once
+	naturesMu   sync.Mutex
 	naturesData []Nature
-	naturesErr  error
 )
 
 // Natures loads all natures from PokeAPI (cached on disk).
 func (d *Client) Natures() ([]Nature, error) {
-	naturesOnce.Do(func() {
-		naturesData, naturesErr = cached(d, "natures", func() ([]Nature, error) {
-			var listing struct{ Results []namedURL }
-			if err := d.get(apiBase+"/nature?limit=100", &listing); err != nil {
-				return nil, err
-			}
-			out := make([]Nature, len(listing.Results))
-			var wg sync.WaitGroup
-			var mu sync.Mutex
-			var firstErr error
-			for i, entry := range listing.Results {
-				wg.Add(1)
-				go func(i int, e namedURL) {
-					defer wg.Done()
-					var raw struct {
-						Name          string
-						IncreasedStat *namedURL `json:"increased_stat"`
-						DecreasedStat *namedURL `json:"decreased_stat"`
-						LikesFlavor   *namedURL `json:"likes_flavor"`
-						HatesFlavor   *namedURL `json:"hates_flavor"`
+	naturesMu.Lock()
+	defer naturesMu.Unlock()
+	if naturesData != nil {
+		return naturesData, nil
+	}
+	data, err := cached(d, "natures", func() ([]Nature, error) {
+		var listing struct{ Results []namedURL }
+		if err := d.get(apiBase+"/nature?limit=100", &listing); err != nil {
+			return nil, err
+		}
+		out := make([]Nature, len(listing.Results))
+		var wg sync.WaitGroup
+		var mu sync.Mutex
+		var firstErr error
+		for i, entry := range listing.Results {
+			wg.Add(1)
+			go func(i int, e namedURL) {
+				defer wg.Done()
+				var raw struct {
+					Name          string
+					IncreasedStat *namedURL `json:"increased_stat"`
+					DecreasedStat *namedURL `json:"decreased_stat"`
+					LikesFlavor   *namedURL `json:"likes_flavor"`
+					HatesFlavor   *namedURL `json:"hates_flavor"`
+				}
+				if err := d.get(e.URL, &raw); err != nil {
+					mu.Lock()
+					firstErr = err
+					mu.Unlock()
+					return
+				}
+				n := Nature{Name: raw.Name}
+				if raw.IncreasedStat != nil && raw.DecreasedStat != nil {
+					n.Increased, n.Decreased = raw.IncreasedStat.Name, raw.DecreasedStat.Name
+				} else {
+					// Neutral natures have no stats in PokeAPI; place them on the grid diagonal.
+					n.Increased, n.Decreased = neutralDiagonal[raw.Name], neutralDiagonal[raw.Name]
+				}
+				if !n.Neutral() {
+					if raw.LikesFlavor != nil {
+						n.Likes = raw.LikesFlavor.Name
 					}
-					if err := d.get(e.URL, &raw); err != nil {
-						mu.Lock()
-						firstErr = err
-						mu.Unlock()
-						return
+					if raw.HatesFlavor != nil {
+						n.Hates = raw.HatesFlavor.Name
 					}
-					n := Nature{Name: raw.Name}
-					if raw.IncreasedStat != nil && raw.DecreasedStat != nil {
-						n.Increased, n.Decreased = raw.IncreasedStat.Name, raw.DecreasedStat.Name
-					} else {
-						// Neutral natures have no stats in PokeAPI; place them on the grid diagonal.
-						n.Increased, n.Decreased = neutralDiagonal[raw.Name], neutralDiagonal[raw.Name]
-					}
-					if !n.Neutral() {
-						if raw.LikesFlavor != nil {
-							n.Likes = raw.LikesFlavor.Name
-						}
-						if raw.HatesFlavor != nil {
-							n.Hates = raw.HatesFlavor.Name
-						}
-					}
-					out[i] = n
-				}(i, entry)
-			}
-			wg.Wait()
-			if firstErr != nil {
-				return nil, firstErr
-			}
-			sort.Slice(out, func(i, j int) bool { return out[i].Name < out[j].Name })
-			return out, nil
-		})
+				}
+				out[i] = n
+			}(i, entry)
+		}
+		wg.Wait()
+		if firstErr != nil {
+			return nil, firstErr
+		}
+		sort.Slice(out, func(i, j int) bool { return out[i].Name < out[j].Name })
+		return out, nil
 	})
-	return naturesData, naturesErr
+	if err != nil {
+		return nil, err // not remembered: a later call retries
+	}
+	naturesData = data
+	return data, nil
 }
 
 func NatureByName(natures []Nature, name string) (Nature, bool) {

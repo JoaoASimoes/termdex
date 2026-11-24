@@ -48,6 +48,7 @@ type Pokemon struct {
 
 	// From the species endpoint.
 	Species    string `json:"species"`
+	SpeciesID  int    `json:"species_id"` // National Pokédex number (also for forms)
 	Genus      string `json:"genus"`
 	Flavor     string `json:"flavor"`
 	Generation string `json:"generation"`
@@ -79,6 +80,14 @@ func (p Pokemon) UniqueMoveCount() int {
 	return len(seen)
 }
 
+// Number is the National Pokédex number: forms share their species' number.
+func (p Pokemon) Number() int {
+	if p.SpeciesID > 0 {
+		return p.SpeciesID
+	}
+	return p.ID
+}
+
 func (p Pokemon) StatTotal() int {
 	t := 0
 	for _, s := range p.Stats {
@@ -94,6 +103,8 @@ type AbilityInfo struct {
 	Effect      string `json:"effect"`
 	Flavor      string `json:"flavor"`
 	Generation  string `json:"generation"`
+	// Pokemon lists every Pokémon that can have the ability.
+	Pokemon []string `json:"pokemon"`
 }
 
 type MoveInfo struct {
@@ -216,7 +227,7 @@ func (d *Client) versionGroupOrder() map[string]int {
 
 // ----------------------------------------------------------------------------- loaders
 
-const cacheVersion = "v7_" // bump when the cached shapes change
+const cacheVersion = "v8_" // bump when the cached shapes change
 
 func (d *Client) Pokemon(name string) (Pokemon, error) {
 	return cached(d, cacheVersion+"pokemon_"+name, func() (Pokemon, error) {
@@ -257,7 +268,8 @@ func (d *Client) Pokemon(name string) (Pokemon, error) {
 		}
 
 		p := Pokemon{Name: raw.Name, ID: raw.ID, Height: raw.Height, Weight: raw.Weight, Species: raw.Species.Name,
-			Sprite: raw.Sprites.FrontDefault, SpriteFemale: raw.Sprites.FrontFemale}
+			SpeciesID: idFromURL(raw.Species.URL),
+			Sprite:    raw.Sprites.FrontDefault, SpriteFemale: raw.Sprites.FrontFemale}
 		sort.Slice(raw.Types, func(i, j int) bool { return raw.Types[i].Slot < raw.Types[j].Slot })
 		for _, t := range raw.Types {
 			p.Types = append(p.Types, t.Type.Name)
@@ -361,13 +373,16 @@ func sortMoves(moves []MoveRef) {
 }
 
 func (d *Client) Ability(name string) (AbilityInfo, error) {
-	return cached(d, "ability_"+name, func() (AbilityInfo, error) {
+	return cached(d, "ability2_"+name, func() (AbilityInfo, error) {
 		var raw struct {
 			Name              string
 			Names             []apiName
 			EffectEntries     []apiEffectEntry `json:"effect_entries"`
 			FlavorTextEntries []apiFlavorEntry `json:"flavor_text_entries"`
 			Generation        namedURL
+			Pokemon           []struct {
+				Pokemon namedURL
+			}
 		}
 		if err := d.get(apiBase+"/ability/"+name, &raw); err != nil {
 			return AbilityInfo{}, err
@@ -379,6 +394,9 @@ func (d *Client) Ability(name string) (AbilityInfo, error) {
 			Generation:  raw.Generation.Name,
 		}
 		a.ShortEffect, a.Effect = englishEffect(raw.EffectEntries)
+		for _, p := range raw.Pokemon {
+			a.Pokemon = append(a.Pokemon, p.Pokemon.Name)
+		}
 		return a, nil
 	})
 }

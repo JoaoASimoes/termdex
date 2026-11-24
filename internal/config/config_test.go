@@ -97,3 +97,56 @@ func TestExampleConfigMatchesDefaults(t *testing.T) {
 		t.Fatal("configs/config.example.toml differs from internal/config/default.toml; copy it over")
 	}
 }
+
+func TestColorOverrideKeepsOtherTypes(t *testing.T) {
+	c, err := Load(write(t, "[colors]\naccent = \"33\"\n[colors.types]\nfire = \"#FF0000\"\n"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.Colors.Accent != "33" || c.Colors.Types["fire"] != "#FF0000" {
+		t.Errorf("overrides not applied: %+v", c.Colors)
+	}
+	if c.Colors.Types["water"] != Default().Colors.Types["water"] || len(c.Colors.Types) != len(TypeNames) {
+		t.Errorf("other type colours must keep their defaults: %v", c.Colors.Types)
+	}
+	if c.Colors.Heading != Default().Colors.Heading {
+		t.Error("colours that were not set must keep their defaults")
+	}
+}
+
+func TestBadColorsAreAnError(t *testing.T) {
+	for _, content := range []string{
+		"[colors]\naccent = \"red\"\n",
+		"[colors]\nmuted = \"256\"\n",
+		"[colors.types]\nfire = \"#12345\"\n",
+		"[colors.types]\nshadow = \"#123456\"\n",
+	} {
+		if _, err := Load(write(t, content)); err == nil {
+			t.Errorf("%q should be rejected", content)
+		}
+	}
+}
+
+func TestValidColor(t *testing.T) {
+	for c, want := range map[string]bool{
+		"#E3350D": true, "#e3350d": true, "0": true, "255": true,
+		"256": false, "-1": false, "007": false, "#E335": false, "red": false, "": false,
+	} {
+		if got := ValidColor(c); got != want {
+			t.Errorf("ValidColor(%q) = %v, want %v", c, got, want)
+		}
+	}
+}
+
+func TestEveryActionHasAHelpText(t *testing.T) {
+	k := Default().Keys
+	for _, screen := range []string{"search", "entry", "list"} {
+		for _, sec := range k.HelpFor(screen) {
+			for _, r := range sec.Rows {
+				if r.Desc == "" {
+					t.Errorf("%s/%s: an action has no description (keys %v)", screen, sec.Title, r.Keys)
+				}
+			}
+		}
+	}
+}

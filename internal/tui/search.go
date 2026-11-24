@@ -85,12 +85,13 @@ type searchState struct {
 	nature string // nature shown on the right
 	move   string // move shown on the right
 	item   string // item shown on the right
+	note   string // Pokédex filter message ("Loading type:fire…", "Unknown type …")
 }
 
 func newSearchState() searchState {
 	var s searchState
 	placeholders := [numFields]string{
-		"e.g. garchomp", "e.g. thunderbolt", "e.g. leftovers", "e.g. adamant, speed, -spa", "e.g. fire", "e.g. flying",
+		"name, type:fire, gen:1", "e.g. thunderbolt", "e.g. leftovers", "e.g. adamant, speed, -spa", "e.g. fire", "e.g. flying",
 	}
 	for i := range s.inputs {
 		in := textinput.New()
@@ -125,14 +126,15 @@ func (m *tuiModel) refreshSuggestions() {
 	s := &m.search
 	s.selected = 0
 	s.suggestions = nil
+	s.note = ""
 	if !m.dataReady {
 		return
 	}
 	q := fuzzy.Normalize(s.inputs[s.focus].Value())
 	switch {
-	case s.focus == fieldPokemon && q != "":
-		s.suggestions = fuzzy.Suggest(q, m.data.KnownPokemon(), maxSuggestions)
 	case s.focus == fieldPokemon:
+		// The whole Pokédex in number order, or the filtered/matching part of it.
+		s.suggestions, s.note = m.pokedexSuggestions(s.inputs[fieldPokemon].Value())
 	case s.focus == fieldMove || s.focus == fieldItem:
 		names := m.moveNames
 		if s.focus == fieldItem {
@@ -244,7 +246,18 @@ func (m *tuiModel) confirm() tea.Cmd {
 		s.openOnLoad = pick
 		return m.showPokemon(pick, false)
 
-	case fieldMove, fieldItem, fieldNature:
+	case fieldMove, fieldItem: // the Pokémon that learn the move / hold the item
+		if pick == "" {
+			m.status = fmt.Sprintf("Nothing matches '%s'.", in.Value())
+			return nil
+		}
+		kind := "move"
+		if s.focus == fieldItem {
+			kind = "item"
+		}
+		return m.openList(kind, pick, true)
+
+	case fieldNature:
 		if pick == "" {
 			m.status = fmt.Sprintf("Nothing matches '%s'.", in.Value())
 			return nil
@@ -325,7 +338,7 @@ func (m tuiModel) updateSearch(msg tea.Msg) (tea.Model, tea.Cmd) {
 	if s.inputs[s.focus].Value() != before {
 		m.status = ""
 		m.refreshSuggestions()
-		return m, tea.Batch(cmd, m.preview())
+		return m, tea.Batch(cmd, m.fetchFilters(), m.preview())
 	}
 	return m, cmd
 }
@@ -341,7 +354,7 @@ func (m tuiModel) listRows() int {
 	if m.search.focus == fieldType1 || m.search.focus == fieldType2 {
 		extra = 3 // two boxes
 	}
-	if m.search.focus == fieldMove || m.search.focus == fieldItem {
+	if m.search.focus == fieldMove || m.search.focus == fieldItem || m.search.focus == fieldPokemon {
 		extra = 1 // the "N of M" line
 	}
 	return max(5, m.height-15-extra)
@@ -376,15 +389,18 @@ func (m tuiModel) searchPanel() string {
 		b.WriteString(m.spinner.View() + helpStyle.Render(" Loading moves…"))
 	case s.focus == fieldItem && m.itemNames == nil:
 		b.WriteString(m.spinner.View() + helpStyle.Render(" Loading items…"))
-	case len(s.suggestions) == 0 && s.focus == fieldPokemon && s.inputs[fieldPokemon].Value() == "":
-		b.WriteString(helpStyle.Render("Start typing a name…"))
+	case s.note != "":
+		b.WriteString(helpStyle.Render(s.note))
 	case len(s.suggestions) == 0:
 		b.WriteString(helpStyle.Render("No matches"))
 	default:
-		if catalog {
+		if catalog || s.focus == fieldPokemon {
 			total := len(m.moveNames)
-			if s.focus == fieldItem {
+			switch s.focus {
+			case fieldItem:
 				total = len(m.itemNames)
+			case fieldPokemon:
+				total = len(m.dexOrder)
 			}
 			b.WriteString(labelStyle.Render(fmt.Sprintf("%d of %d", len(s.suggestions), total)) + "\n")
 		}
@@ -404,6 +420,7 @@ func (m tuiModel) suggestionRow(sug string, selected bool) string {
 	label := sug
 	switch s.focus {
 	case fieldPokemon:
+		return m.dexRow(sug, selected, leftWidth)
 	case fieldMove, fieldItem:
 		label = truncate(dex.DisplayName(sug), leftWidth-3)
 		if s.focus == fieldMove {
@@ -486,8 +503,11 @@ func (m tuiModel) viewSearch() string {
 		rightWidth = max(20, m.width-4)
 	}
 
+	help := m.searchHelp(mode)
+	foot := m.footer(help)
 	left := m.searchPanel()
-	right := m.searchResultPanel(rightWidth)
+	right := m.clip(m.searchResultPanel(rightWidth), m.availHeight(foot),
+		pair(m.keys.Search.ScrollUp, m.keys.Search.ScrollDown))
 	leftBox := lipgloss.NewStyle().Width(leftWidth)
 	rightBox := lipgloss.NewStyle().Width(rightWidth)
 
@@ -504,6 +524,5 @@ func (m tuiModel) viewSearch() string {
 			panelStyle.Render(rightBox.Height(h).Render(right)))
 	}
 
-	help := m.searchHelp(mode)
-	return lipgloss.JoinVertical(lipgloss.Left, m.header(""), "", tabs, "", body, m.footer(help))
+	return lipgloss.JoinVertical(lipgloss.Left, m.header(""), "", tabs, "", body, foot)
 }

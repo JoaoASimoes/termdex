@@ -46,12 +46,15 @@ first lookup everything is instant and works offline.
 
 - **Pixel-art sprites** – every Pokémon's game sprite drawn right in the terminal with
   half-block characters (two pixels per cell, 24-bit colour).
-- **Pokédex search** – every species and form known to PokeAPI (Mega, Gmax, regional forms, …).
+- **Pokédex search** – every species and form known to PokeAPI (Mega, Gmax, regional forms, …),
+  listed in National Pokédex order with each form right after its species. Filter with
+  `type:fire`, `gen:1` and combinations (`type:fire type:flying gen:1 char`).
   The entry of the highlighted suggestion is shown live while you type or scroll: category,
   Pokédex description, height/weight, base stats, abilities (including the hidden one),
   evolutions (what it evolves from/into and how: level, item, trade, friendship, time of
   day, …) and weaknesses.
-- **Full entry** (press Enter) with four tabs:
+- **Full entry** (press Enter). A breadcrumb under the title shows where you are
+  (`Search › Charmeleon › Charizard`) and where Esc takes you back to. Four tabs:
   - **Overview** – description, stats, weaknesses/resistances, abilities and the full
     evolution tree with the conditions for each step.
   - **Abilities** – what each ability does (short and full effect, in-game description).
@@ -64,6 +67,8 @@ first lookup everything is instant and works offline.
     back through the Pokémon you came from.
 - **Moves** – every move in the games (938), searchable with typos: type, category, power,
   accuracy, PP, priority, effect chance, effect, description and the Pokémon that learn it.
+  Enter opens the list of those Pokémon (also from a Pokémon's Moves and Abilities tabs);
+  from there Enter opens a Pokémon, and Esc walks back.
 - **Items** – every item (2,200+): sprite, category, fling power, attributes, effect,
   description and the wild Pokémon that may hold it.
 - **Natures** – what each nature does (+10% / −10% stats, liked and disliked berry flavors),
@@ -72,6 +77,11 @@ first lookup everything is instant and works offline.
 - **Type matchups** – weaknesses, resistances and immunities of one or two types.
 - **Typo tolerant** – misspelled names and types are matched by prefix, edit distance and
   substring (`charizrd` → charizard, `fary` → fairy).
+- **Help screen** – `F1` (or `?` on a Pokémon) lists every key of the current screen.
+- **Small terminals** – panels that do not fit scroll with `shift+↑/↓` (`pgup/pgdown` in the
+  search).
+- **Offline friendly** – everything already downloaded works without a connection; when a
+  download fails you get a clear message and `ctrl+r` to retry.
 - **Ability warnings** – flags abilities that change matchups (Levitate, Flash Fire,
   Thick Fat, Wonder Guard, …).
 - **Subcommands** for quick lookups, with coloured output (disabled automatically when piped,
@@ -166,8 +176,9 @@ top of its list.
 ## Configuration
 
 Optional TOML file at `~/.config/pokedex/config.toml` (Linux; see the docs for other
-systems). It sets every key binding and a few general options: cache lifetime, number of
-simultaneous requests, preview delay and sprites on/off.
+systems). It sets every key binding, the colours of the interface (accent, headings,
+labels, type badges…) and a few general options: cache lifetime, number of simultaneous
+requests, preview delay and sprites on/off.
 
 ```bash
 pokedex config init     # write the commented defaults (same as configs/config.example.toml)
@@ -177,6 +188,9 @@ pokedex config check    # validate after editing
 ```toml
 [general]
 sprites = false
+
+[colors]
+accent = "#1E66F5"
 
 [keys.search]
 down = ["down", "ctrl+d"]
@@ -208,7 +222,11 @@ internal/
     model.go          root model, messages and data loading
     search.go         search screen: Pokédex, Moves, Items, Natures, Type Matchups tabs
     detail.go         Pokémon entry: Overview, Abilities and Moves tabs
-    family.go         Family tab: evolutions, forms, gender looks, back history
+    family.go         Family tab: evolutions, forms and gender looks
+    nav.go            page history, breadcrumb and the lists of related Pokémon
+    dexorder.go       Pokédex order and the type:/gen: filters
+    overlay.go        help screen
+    scroll.go         clipping and scrolling of panels that do not fit
     render.go         styles, type badges, stat bars, Pokédex card, nature chart
     help.go           help lines built from the configured key bindings
   dex/                PokeAPI client, local cache and domain logic

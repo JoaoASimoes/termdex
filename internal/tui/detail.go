@@ -31,7 +31,6 @@ type detailState struct {
 	filtering  bool
 	asked      map[int]bool // learnsets whose move details were requested
 	familySel  int
-	openOnLoad string // related Pokémon to open once loaded
 }
 
 func (d detailState) learnset() dex.Learnset {
@@ -216,16 +215,19 @@ func (m tuiModel) updateDetail(msg tea.Msg) (tea.Model, tea.Cmd) {
 	k, keys := key.String(), m.keys.Entry
 	switch {
 	case keys.Back.Matches(k):
-		if n := len(m.history); n > 0 { // back to the Pokémon we came from
-			m.detail = m.history[n-1]
-			m.history = m.history[:n-1]
-			return m, nil
-		}
-		m.screen = screenSearch
-		return m, nil
+		return m, m.back()
 	case keys.Open.Matches(k):
-		if d.tab == tabFamily {
+		switch d.tab {
+		case tabFamily:
 			return m, m.openFamily()
+		case tabMoves: // the Pokémon that learn the selected move
+			if moves := m.filteredMoves(); len(moves) > 0 {
+				return m, m.openList("move", moves[clamp(d.moveSel, 0, len(moves)-1)].Name, false)
+			}
+		case tabAbilities: // the Pokémon that can have the selected ability
+			if len(d.p.Abilities) > 0 {
+				return m, m.openList("ability", d.p.Abilities[clamp(d.abilitySel, 0, len(d.p.Abilities)-1)].Name, false)
+			}
 		}
 	case keys.NextTab.Matches(k):
 		return m, m.setTab(d.tab + 1)
@@ -273,7 +275,7 @@ func (m tuiModel) updateDetail(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m tuiModel) viewDetail() string {
 	d := m.detail
 	p := d.p
-	extra := headingStyle.Render(fmt.Sprintf("#%04d %s", p.ID, dex.DisplayName(p.Name))) + "  " +
+	extra := headingStyle.Render(fmt.Sprintf("#%04d %s", p.Number(), dex.DisplayName(p.Name))) + "  " +
 		strings.Join(wrapBadges(p.Types, 40), " ")
 
 	tabs := renderTabs([]string{"1 Overview", "2 Abilities", "3 Moves", "4 Family"}, int(d.tab))
@@ -283,22 +285,29 @@ func (m tuiModel) viewDetail() string {
 		totalW = 100
 	}
 	totalW = min(totalW, 130)
-	bodyH := max(12, m.height-10)
+	foot := m.footer(m.entryHelp())
+	avail := m.availHeight(foot) // 0 = unknown terminal height: no clipping
+	bodyH := avail
+	if bodyH == 0 {
+		bodyH = 30
+	}
 
 	var body string
 	switch d.tab {
 	case tabOverview:
-		body = m.viewOverview(totalW)
+		body = m.viewOverview(totalW, avail)
 	case tabAbilities:
-		body = m.viewAbilities(totalW)
+		body = m.viewAbilities(totalW, avail)
 	case tabMoves:
-		body = m.viewMoves(totalW, bodyH)
+		body = m.viewMoves(totalW, bodyH, avail)
 	case tabFamily:
-		body = m.viewFamily(totalW, bodyH)
+		body = m.viewFamily(totalW, bodyH, avail)
 	}
-	help := m.entryHelp()
-	return lipgloss.JoinVertical(lipgloss.Left, m.header(extra), "", tabs, "", body, m.footer(help))
+	return lipgloss.JoinVertical(lipgloss.Left, m.header(extra), m.breadcrumb(totalW), tabs, "", body, foot)
 }
+
+// scrollKeys names the entry scroll keys, for the "more" indicator.
+func (m tuiModel) scrollKeys() string { return pair(m.keys.Entry.ScrollUp, m.keys.Entry.ScrollDown) }
 
 // twoPanels renders a left and right panel side by side with equal heights.
 func twoPanels(left string, leftW int, right string, rightW int, height int) string {
@@ -309,7 +318,7 @@ func twoPanels(left string, leftW int, right string, rightW int, height int) str
 		panelStyle.Render(lipgloss.NewStyle().Width(rightW).Height(h).Render(right)))
 }
 
-func (m tuiModel) viewOverview(totalW int) string {
+func (m tuiModel) viewOverview(totalW, avail int) string {
 	p := m.detail.p
 	leftW := max(36, (totalW-9)/2)
 	rightW := max(36, totalW-9-leftW)
@@ -334,14 +343,12 @@ func (m tuiModel) viewOverview(totalW int) string {
 		}
 		rightParts = append(rightParts, sectionStyle.Render("Other forms")+"\n"+wrap(strings.Join(forms, labelStyle.Render(" · ")), rightW))
 	}
-	rightParts = append(rightParts, labelStyle.Render(wrap(fmt.Sprintf(
-		"Learns %d different moves across %d games – see the Moves tab. "+
-			"Press 4 to browse and open evolutions and forms.", p.UniqueMoveCount(), len(p.Learnsets)), rightW)))
-
-	return twoPanels(strings.Join(leftParts, "\n\n"), leftW, strings.Join(rightParts, "\n\n"), rightW, 0)
+	left := m.clip(strings.Join(leftParts, "\n\n"), avail, m.scrollKeys())
+	right := m.clip(strings.Join(rightParts, "\n\n"), avail, m.scrollKeys())
+	return twoPanels(left, leftW, right, rightW, 0)
 }
 
-func (m tuiModel) viewAbilities(totalW int) string {
+func (m tuiModel) viewAbilities(totalW, avail int) string {
 	d := m.detail
 	const leftW = 28
 	rightW := max(30, totalW-leftW-9)
@@ -375,7 +382,7 @@ func (m tuiModel) viewAbilities(totalW int) string {
 			right = renderAbilityInfo(info, ref.Hidden, rightW)
 		}
 	}
-	return twoPanels(strings.TrimRight(list.String(), "\n"), leftW, right, rightW, 8)
+	return twoPanels(strings.TrimRight(list.String(), "\n"), leftW, m.clip(right, avail, m.scrollKeys()), rightW, 8)
 }
 
 func renderAbilityInfo(a dex.AbilityInfo, hidden bool, width int) string {
@@ -400,7 +407,7 @@ func renderAbilityInfo(a dex.AbilityInfo, hidden bool, width int) string {
 	return strings.Join(parts, "\n\n")
 }
 
-func (m tuiModel) viewMoves(totalW, bodyH int) string {
+func (m tuiModel) viewMoves(totalW, bodyH, avail int) string {
 	d := m.detail
 	const leftW = 44
 	rightW := max(30, totalW-leftW-9)
@@ -443,7 +450,7 @@ func (m tuiModel) viewMoves(totalW, bodyH int) string {
 			right = headingStyle.Render(dex.DisplayName(ref.Name)) + "\n\n" + m.spinner.View() + " Loading…"
 		}
 	}
-	return twoPanels(strings.TrimRight(list.String(), "\n"), leftW, right, rightW, bodyH)
+	return twoPanels(strings.TrimRight(list.String(), "\n"), leftW, m.clip(right, avail, m.scrollKeys()), rightW, bodyH)
 }
 
 func (m tuiModel) moveRow(ref dex.MoveRef, selected bool) string {

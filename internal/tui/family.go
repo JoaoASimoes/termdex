@@ -1,11 +1,11 @@
 package tui
 
 import (
-	"fmt"
-	"github.com/JoaoASimoes/pokedex/internal/dex"
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
+
+	"github.com/JoaoASimoes/pokedex/internal/dex"
 )
 
 // The Family tab lists Pokémon related to the current one (its evolution line and the
@@ -108,7 +108,7 @@ func (m *tuiModel) loadRelated(name string) tea.Cmd {
 	})
 }
 
-// openFamily opens the selected related Pokémon, remembering the current one for Esc.
+// openFamily opens the selected evolution or form (on its Overview tab).
 func (m *tuiModel) openFamily() tea.Cmd {
 	items := m.familyItems()
 	if len(items) == 0 {
@@ -118,21 +118,7 @@ func (m *tuiModel) openFamily() tea.Cmd {
 	if it.current || it.kind == famFemale {
 		return nil
 	}
-	if p, ok := m.pokeCache[it.name]; ok {
-		return m.openRelated(p)
-	}
-	m.detail.openOnLoad = it.name
-	return m.loadRelated(it.name)
-}
-
-func (m *tuiModel) openRelated(p dex.Pokemon) tea.Cmd {
-	prev := m.detail
-	prev.openOnLoad = ""
-	cmd := m.openDetail(p)
-	m.history = append(m.history, prev)
-	m.detail.tab = tabFamily
-	m.detail.familySel = m.currentFamilyIndex()
-	return cmd
+	return m.openPokemon(it.name)
 }
 
 // currentFamilyIndex is the position of the current Pokémon in the Family list.
@@ -147,7 +133,7 @@ func (m tuiModel) currentFamilyIndex() int {
 
 // ----------------------------------------------------------------------------- view
 
-func (m tuiModel) viewFamily(totalW, bodyH int) string {
+func (m tuiModel) viewFamily(totalW, bodyH, avail int) string {
 	items := m.familyItems()
 	const leftW = 34
 	rightW := max(30, totalW-leftW-9)
@@ -181,7 +167,8 @@ func (m tuiModel) viewFamily(totalW, bodyH int) string {
 		}
 	}
 
-	return twoPanels(strings.TrimRight(list.String(), "\n"), leftW, m.familyCard(items[sel], rightW), rightW, bodyH)
+	right := m.clip(m.familyCard(items[sel], rightW), avail, m.scrollKeys())
+	return twoPanels(strings.TrimRight(list.String(), "\n"), leftW, right, rightW, bodyH)
 }
 
 func (m tuiModel) familyCard(it familyItem, width int) string {
@@ -218,13 +205,4 @@ func (m tuiModel) familyCard(it familyItem, width int) string {
 	}
 	parts = append(parts, labelStyle.Render(hint))
 	return strings.Join(parts, "\n\n")
-}
-
-// backLabel names the Pokémon Esc returns to, for the help line.
-func (m tuiModel) backLabel() string {
-	back := m.keys.Entry.Back.Key(0)
-	if n := len(m.history); n > 0 {
-		return fmt.Sprintf("%s back to %s", back, dex.DisplayName(m.history[n-1].p.Name))
-	}
-	return back + " back"
 }
