@@ -22,6 +22,9 @@ const (
 	numFields
 )
 
+// noType is the "none" entry of the Type 2 list.
+const noType = ""
+
 var fieldLabels = [numFields]string{"Search Pokémon", "Search nature or stat", "Type 1", "Type 2 (optional)"}
 
 // Search screen tabs, in tab order: Pokédex → Natures → Type Matchups.
@@ -105,6 +108,9 @@ func (m *tuiModel) refreshSuggestions() {
 		if m.natures != nil {
 			s.suggestions = dex.SuggestNatures(q, m.natures)
 		}
+	case q == "" && s.focus == fieldType2:
+		// "" is the "none" option: a single-type lookup.
+		s.suggestions = append([]string{noType}, m.data.TypeNames()...)
 	case q == "":
 		s.suggestions = m.data.TypeNames()
 	default:
@@ -126,7 +132,7 @@ func (m *tuiModel) showPokemon(name string, debounce bool) tea.Cmd {
 		m.loading = "Loading " + dex.DisplayName(name) + "…"
 		return tea.Batch(m.spin(), loadPokemonCmd(m.data, seq, name))
 	}
-	return tea.Tick(previewDelay, func(time.Time) tea.Msg { return previewMsg{seq, name} })
+	return tea.Tick(m.previewDelay, func(time.Time) tea.Msg { return previewMsg{seq, name} })
 }
 
 // preview shows the result for the highlighted suggestion without confirming it.
@@ -190,13 +196,13 @@ func (m *tuiModel) confirm() tea.Cmd {
 		return nil
 	}
 
-	if strings.TrimSpace(in.Value()) == "" {
-		pick = "" // empty field clears that type
-	} else if pick == "" {
-		m.status = fmt.Sprintf("No type matches '%s'.", in.Value())
+	if len(s.suggestions) == 0 {
+		if strings.TrimSpace(in.Value()) != "" {
+			m.status = fmt.Sprintf("No type matches '%s'.", in.Value())
+		}
 		return nil
 	}
-	in.SetValue(pick)
+	in.SetValue(pick) // the highlighted type ("" for the "none" option)
 	in.CursorEnd()
 	if s.focus == fieldType1 {
 		s.type1 = pick
@@ -214,39 +220,41 @@ func (m *tuiModel) confirm() tea.Cmd {
 func (m tuiModel) updateSearch(msg tea.Msg) (tea.Model, tea.Cmd) {
 	s := &m.search
 	if key, ok := msg.(tea.KeyPressMsg); ok {
-		switch key.String() {
-		case "esc":
+		k, keys := key.String(), m.keys.Search
+		switch {
+		case keys.Clear.Matches(k):
 			if s.inputs[s.focus].Value() == "" {
 				return m, tea.Quit
 			}
 			s.inputs[s.focus].SetValue("")
 			m.refreshSuggestions()
 			return m, nil
-		case "tab":
-			// Nothing entered in Type 1: tab goes back to the Pokédex instead of Type 2.
-			if s.focus == fieldType1 && strings.TrimSpace(s.inputs[fieldType1].Value()) == "" {
-				return m, m.setFocus(fieldPokemon)
+		case keys.NextField.Matches(k), keys.PrevField.Matches(k):
+			// Only moves between the boxes of the current tab (Type 1 <-> Type 2).
+			switch s.focus {
+			case fieldType1:
+				return m, m.setFocus(fieldType2)
+			case fieldType2:
+				return m, m.setFocus(fieldType1)
 			}
-			return m, m.setFocus(s.focus + 1)
-		case "shift+tab":
-			return m, m.setFocus(s.focus - 1)
-		case "ctrl+l":
+			return m, nil
+		case keys.NextTab.Matches(k):
 			return m, m.switchTab(1)
-		case "ctrl+h":
+		case keys.PrevTab.Matches(k):
 			return m, m.switchTab(-1)
-		case "up", "ctrl+k", "ctrl+p":
+		case keys.Up.Matches(k):
 			if s.selected > 0 {
 				s.selected--
 				return m, m.preview()
 			}
 			return m, nil
-		case "down", "ctrl+j", "ctrl+n":
+		case keys.Down.Matches(k):
 			if s.selected < len(s.suggestions)-1 {
 				s.selected++
 				return m, m.preview()
 			}
 			return m, nil
-		case "enter":
+		case keys.Confirm.Matches(k):
 			return m, m.confirm()
 		}
 	}
@@ -295,6 +303,9 @@ func (m tuiModel) searchPanel() string {
 		b.WriteString(helpStyle.Render("No matches"))
 	default:
 		for i, sug := range s.suggestions {
+			if sug == noType {
+				sug = "— none (single type) —"
+			}
 			hint := ""
 			if s.focus == fieldNature {
 				if n, ok := dex.NatureByName(m.natures, sug); ok {
@@ -369,14 +380,6 @@ func (m tuiModel) viewSearch() string {
 			panelStyle.Render(rightBox.Height(h).Render(right)))
 	}
 
-	var help string
-	switch mode {
-	case 0:
-		help = "↑/↓ ctrl+k/j select • enter open entry • ctrl+h/l tabs • ctrl+t types • esc clear/quit"
-	case 1:
-		help = "↑/↓ ctrl+k/j select • type a name or stat (speed, -spa) • ctrl+h/l tabs • ctrl+f search • esc clear/quit"
-	default:
-		help = "↑/↓ ctrl+k/j select • enter confirm • tab next field • ctrl+h/l tabs • ctrl+f search • esc clear/quit"
-	}
+	help := m.searchHelp(mode)
 	return lipgloss.JoinVertical(lipgloss.Left, m.header(""), "", tabs, "", body, m.footer(help))
 }

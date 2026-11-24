@@ -15,10 +15,14 @@ import (
 	"time"
 )
 
-const (
-	apiBase  = "https://pokeapi.co/api/v2"
-	cacheTTL = 30 * 24 * time.Hour
-)
+const apiBase = "https://pokeapi.co/api/v2"
+
+// Options tune the client. Zero values fall back to the defaults.
+type Options struct {
+	Refresh     bool          // ignore the cache and download everything again
+	CacheTTL    time.Duration // age after which cached data is downloaded again (default 30 days)
+	MaxRequests int           // concurrent requests to PokeAPI (default 6)
+}
 
 var ignoredTypes = map[string]bool{"unknown": true, "shadow": true, "stellar": true}
 
@@ -29,6 +33,7 @@ type TypeChart map[string]map[string]float64
 
 type Client struct {
 	refresh  bool
+	cacheTTL time.Duration
 	cacheDir string
 	client   *http.Client
 	sem      chan struct{} // limits concurrent requests to PokeAPI
@@ -42,7 +47,13 @@ type Client struct {
 	pokemonSet   map[string]bool
 }
 
-func NewClient(refresh bool) *Client {
+func NewClient(opts Options) *Client {
+	if opts.CacheTTL <= 0 {
+		opts.CacheTTL = 30 * 24 * time.Hour
+	}
+	if opts.MaxRequests <= 0 {
+		opts.MaxRequests = 6
+	}
 	base, err := os.UserCacheDir()
 	if err != nil {
 		base = os.TempDir()
@@ -50,10 +61,11 @@ func NewClient(refresh bool) *Client {
 	dir := filepath.Join(base, "pokedex")
 	_ = os.MkdirAll(dir, 0o755)
 	return &Client{
-		refresh:  refresh,
+		refresh:  opts.Refresh,
+		cacheTTL: opts.CacheTTL,
 		cacheDir: dir,
 		client:   &http.Client{Timeout: 15 * time.Second},
-		sem:      make(chan struct{}, 6),
+		sem:      make(chan struct{}, opts.MaxRequests),
 	}
 }
 
@@ -83,7 +95,7 @@ func (d *Client) get(url string, out any) error {
 func cached[T any](d *Client, name string, load func() (T, error)) (T, error) {
 	path := filepath.Join(d.cacheDir, name+".json")
 	if !d.refresh {
-		if st, err := os.Stat(path); err == nil && time.Since(st.ModTime()) < cacheTTL {
+		if st, err := os.Stat(path); err == nil && time.Since(st.ModTime()) < d.cacheTTL {
 			if raw, err := os.ReadFile(path); err == nil {
 				var v T
 				if json.Unmarshal(raw, &v) == nil {

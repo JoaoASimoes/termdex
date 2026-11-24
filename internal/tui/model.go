@@ -3,6 +3,7 @@ package tui
 
 import (
 	"fmt"
+	"github.com/JoaoASimoes/pokedex/internal/config"
 	"github.com/JoaoASimoes/pokedex/internal/dex"
 	"github.com/JoaoASimoes/pokedex/internal/sprite"
 	"image"
@@ -30,7 +31,6 @@ const (
 	minRightWidth  = 44
 	maxRightWidth  = 64
 	maxSuggestions = 10
-	previewDelay   = 150 * time.Millisecond // debounces network lookups while scrolling
 )
 
 // ----------------------------------------------------------------------------- messages
@@ -94,30 +94,37 @@ type tuiModel struct {
 	history []detailState // Pokémon entries to return to with Esc
 
 	// Session caches (the disk cache sits behind these).
-	pokeCache map[string]dex.Pokemon
-	abilities map[string]dex.AbilityInfo
-	moves     map[string]dex.MoveInfo
-	natures   []dex.Nature
-	sprites   map[string]image.Image // nil entry = no sprite available
-	spriteStr map[string]string      // rendered sprites, keyed by "name@colsxrows"
-	pending   map[string]bool        // "ability:<name>" / "move:<name>" requests in flight
-	seq       int                    // bumped on every Pokémon preview; stale loads are ignored
+	pokeCache  map[string]dex.Pokemon
+	abilities  map[string]dex.AbilityInfo
+	moves      map[string]dex.MoveInfo
+	natures    []dex.Nature
+	spriteImgs map[string]image.Image // nil entry = no sprite available
+	spriteStr  map[string]string      // rendered sprites, keyed by "name@colsxrows"
+	pending    map[string]bool        // "ability:<name>" / "move:<name>" requests in flight
+	seq        int                    // bumped on every Pokémon preview; stale loads are ignored
+
+	keys         config.Keys
+	previewDelay time.Duration // debounces network lookups while scrolling
+	sprites      bool
 
 	width, height int
 }
 
-func newTUIModel(d *dex.Client) tuiModel {
+func newTUIModel(d *dex.Client, cfg config.Config) tuiModel {
 	return tuiModel{
-		data:      d,
-		spinner:   spinner.New(spinner.WithSpinner(spinner.MiniDot), spinner.WithStyle(lipgloss.NewStyle().Foreground(accent))),
-		loading:   "Loading data from PokeAPI…",
-		search:    newSearchState(),
-		pokeCache: map[string]dex.Pokemon{},
-		abilities: map[string]dex.AbilityInfo{},
-		moves:     map[string]dex.MoveInfo{},
-		sprites:   map[string]image.Image{},
-		spriteStr: map[string]string{},
-		pending:   map[string]bool{},
+		data:         d,
+		keys:         cfg.Keys,
+		previewDelay: cfg.General.PreviewDelay(),
+		sprites:      cfg.General.Sprites,
+		spinner:      spinner.New(spinner.WithSpinner(spinner.MiniDot), spinner.WithStyle(lipgloss.NewStyle().Foreground(accent))),
+		loading:      "Loading data from PokeAPI…",
+		search:       newSearchState(),
+		pokeCache:    map[string]dex.Pokemon{},
+		abilities:    map[string]dex.AbilityInfo{},
+		moves:        map[string]dex.MoveInfo{},
+		spriteImgs:   map[string]image.Image{},
+		spriteStr:    map[string]string{},
+		pending:      map[string]bool{},
 	}
 }
 
@@ -167,7 +174,7 @@ func (m *tuiModel) fetchSprite(p dex.Pokemon) tea.Cmd {
 // variant such as its female look).
 func (m *tuiModel) fetchSpriteKey(key, url string) tea.Cmd {
 	pk := "sprite:" + key
-	if _, ok := m.sprites[key]; ok || m.pending[pk] || url == "" {
+	if _, ok := m.spriteImgs[key]; ok || m.pending[pk] || url == "" || !m.sprites {
 		return nil
 	}
 	m.pending[pk] = true
@@ -184,7 +191,7 @@ func (m tuiModel) spriteView(name string, cols, rows int) string {
 }
 
 func (m tuiModel) spriteViewKey(name string, cols, rows int) string {
-	img := m.sprites[name]
+	img := m.spriteImgs[name]
 	if img == nil {
 		return ""
 	}
@@ -282,7 +289,7 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case spriteLoadedMsg:
 		delete(m.pending, "sprite:"+msg.name)
-		m.sprites[msg.name] = msg.img // nil on error: shown without a sprite
+		m.spriteImgs[msg.name] = msg.img // nil on error: shown without a sprite
 		return m, nil
 
 	case abilityLoadedMsg:
@@ -324,14 +331,15 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case tea.KeyPressMsg:
 		// Global shortcuts, available on every screen.
-		switch msg.String() {
-		case "ctrl+c":
+		k, g := msg.String(), m.keys.Global
+		switch {
+		case g.Quit.Matches(k):
 			return m, tea.Quit
-		case "ctrl+f": // new Pokémon search
+		case g.Search.Matches(k): // new Pokémon search
 			m.screen = screenSearch
 			m.search.inputs[fieldPokemon].SetValue("")
 			return m, m.setFocus(fieldPokemon)
-		case "ctrl+t": // type matchups
+		case g.TypeMatchups.Matches(k):
 			m.screen = screenSearch
 			return m, m.setFocus(fieldType1)
 		}
@@ -382,7 +390,7 @@ func (m tuiModel) footer(help string) string {
 }
 
 // Run starts the interactive interface and blocks until the user quits.
-func Run(d *dex.Client) error {
-	_, err := tea.NewProgram(newTUIModel(d)).Run()
+func Run(d *dex.Client, cfg config.Config) error {
+	_, err := tea.NewProgram(newTUIModel(d, cfg)).Run()
 	return err
 }

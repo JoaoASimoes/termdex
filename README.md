@@ -101,13 +101,15 @@ Produces binaries for Linux, macOS and Windows (amd64/arm64) in `dist/`.
 ## Usage
 
 ```
-pokedex [--refresh]                         interactive Pokédex (TUI)
-pokedex [--refresh] pokemon|p <name>        weaknesses of a Pokémon
-pokedex [--refresh] type|t <type> [type2]   weaknesses of 1 or 2 types
-pokedex [--refresh] types                   list available types
+pokedex [options]                         interactive Pokédex (TUI)
+pokedex [options] pokemon|p <name>        weaknesses of a Pokémon
+pokedex [options] type|t <type> [type2]   weaknesses of 1 or 2 types
+pokedex [options] types                   list available types
+pokedex [options] config path|init|show|check   manage the config file
 ```
 
-`--refresh` ignores the cache and downloads the data again. It must come before the command.
+Options go before the command: `--refresh` ignores the cache and downloads the data again,
+`--config <file>` reads another config file.
 
 ```
 $ pokedex type steel fary
@@ -123,6 +125,9 @@ Type(s): Steel / Fairy
 
 When a name is ambiguous, the subcommands list the candidates and ask you to pick one.
 
+These are the default keys; all of them can be changed (see [Configuration](#configuration)).
+The help line at the bottom of the TUI always shows the keys currently configured.
+
 ### Keys – search screen
 
 | Key                            | Action                                                   |
@@ -130,21 +135,22 @@ When a name is ambiguous, the subcommands list the candidates and ask you to pic
 | typing                         | update suggestions (the highlighted one is previewed)    |
 | `↑` / `↓`, `ctrl+k` / `ctrl+j` | move through suggestions                                 |
 | `enter`                        | Pokédex: open the full entry · Types: confirm the type   |
-| `tab` / `shift+tab`            | cycle Pokédex → Natures → Type 1 → Type 2 (switches the tab); with Type 1 empty, `tab` goes back to the Pokédex |
+| `tab` / `shift+tab`            | next / previous box **in the same tab** (Type 1 ↔ Type 2); never changes tab |
 | `ctrl+h` / `ctrl+l`            | previous / next tab (Pokédex, Natures, Type Matchups)    |
 | `ctrl+f`                       | new Pokémon search (works on every screen)               |
 | `ctrl+t`                       | go to Type Matchups (works on every screen)              |
 | `esc`                          | clear the field; on an empty field, quit                 |
 | `ctrl+c`                       | quit                                                     |
 
-To look up a single type, fill in Type 1 and leave Type 2 empty (confirming an empty Type 2
-removes the second type).
+Enter always picks the highlighted type, also when the field is empty and you scrolled the
+list. To look up a single type, leave Type 2 empty or pick "— none (single type) —" at the
+top of its list.
 
 ### Keys – Pokémon entry
 
 | Key                                  | Action                                    |
 |--------------------------------------|-------------------------------------------|
-| `ctrl+h` / `ctrl+l`, `←` / `→`, `tab`, `1`–`4` | switch tab (Overview, Abilities, Moves, Family) |
+| `ctrl+h` / `ctrl+l`, `←` / `→`, `h` / `l`, `1`–`4` | switch tab (Overview, Abilities, Moves, Family) |
 | `enter` (Family tab)                 | open the selected evolution or form       |
 | `↑` / `↓`, `j` / `k`, `ctrl+k/j`     | select ability / move                     |
 | `pgup` / `pgdn`, `g` / `G`           | page / jump to start or end of the list   |
@@ -153,12 +159,35 @@ removes the second type).
 | `esc`                                | clear the filter, go back to the previous Pokémon, or back to search |
 | `ctrl+f` / `ctrl+t`                  | new Pokémon search / Type Matchups        |
 
+## Configuration
+
+Optional TOML file at `~/.config/pokedex/config.toml` (Linux; see the docs for other
+systems). It sets every key binding and a few general options: cache lifetime, number of
+simultaneous requests, preview delay and sprites on/off.
+
+```bash
+pokedex config init     # write the commented defaults (same as configs/config.example.toml)
+pokedex config check    # validate after editing
+```
+
+```toml
+[general]
+sprites = false
+
+[keys.search]
+down = ["down", "ctrl+d"]
+up = ["up", "ctrl+u"]
+```
+
+Full reference in [`docs/`](docs/README.md):
+[configuration](docs/configuration.md) and [key bindings](docs/keybindings.md).
+
 ## Cache
 
 Downloaded data is stored as JSON in your user cache directory
 (`~/.cache/pokedex/` on Linux, `~/Library/Caches/pokedex/` on macOS,
-`%LocalAppData%\pokedex\` on Windows) and refreshed after 30 days. Delete that folder or
-use `--refresh` to force an update. At most 6 requests are sent to PokeAPI at a time.
+`%LocalAppData%\pokedex\` on Windows) and refreshed after 30 days by default
+(`general.cache_ttl_days`). Delete that folder or use `--refresh` to force an update.
 
 ## Project layout
 
@@ -166,14 +195,18 @@ Standard Go layout: one command in `cmd/`, the code in `internal/` packages.
 
 ```
 cmd/pokedex/          entry point (main.go just calls cli.Run)
+configs/              config.example.toml: the commented default configuration
+docs/                 configuration and key binding reference
 internal/
-  cli/                argument parsing, subcommands and plain-text output
+  cli/                argument parsing, subcommands, `config` command, plain-text output
+  config/             config file: defaults (default.toml), loading, validation
   tui/                interactive Bubble Tea interface
     model.go          root model, messages and data loading
     search.go         search screen: Pokédex, Natures and Type Matchups tabs
     detail.go         Pokémon entry: Overview, Abilities and Moves tabs
     family.go         Family tab: evolutions, forms, gender looks, back history
     render.go         styles, type badges, stat bars, Pokédex card, nature chart
+    help.go           help lines built from the configured key bindings
   dex/                PokeAPI client, local cache and domain logic
     client.go         HTTP client, request limiter, cache, type chart, Pokémon list
     pokemon.go        Pokémon, species, ability and move models and loaders
@@ -185,7 +218,8 @@ internal/
   sprite/             half-block pixel-art rendering of sprites
 ```
 
-Dependencies only point one way: `cmd → cli → tui → dex / sprite / fuzzy`.
+Dependencies only point one way: `cmd → cli → tui → dex / sprite / fuzzy`, with `config`
+used by `cli` and `tui`.
 
 ## Development
 

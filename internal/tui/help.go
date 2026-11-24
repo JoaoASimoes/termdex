@@ -1,0 +1,76 @@
+package tui
+
+import (
+	"strings"
+
+	"github.com/JoaoASimoes/pokedex/internal/config"
+)
+
+// Help lines are built from the configured key bindings, so they always show the
+// keys that actually work.
+
+// pair shows two opposite bindings, e.g. "↑/↓ ctrl+k/ctrl+j".
+func pair(a, b config.Binding) string {
+	s := a.Key(0) + "/" + b.Key(0)
+	if a.Key(1) != "" && b.Key(1) != "" {
+		s += " " + a.Key(1) + "/" + b.Key(1)
+	}
+	return s
+}
+
+func item(keys, desc string) string {
+	if strings.TrimSpace(keys) == "" || keys == "/" {
+		return ""
+	}
+	return keys + " " + desc
+}
+
+func helpLine(items ...string) string {
+	var out []string
+	for _, it := range items {
+		if it != "" {
+			out = append(out, it)
+		}
+	}
+	return strings.Join(out, " • ")
+}
+
+func (m tuiModel) searchHelp(mode int) string {
+	s, g := m.keys.Search, m.keys.Global
+	sel := item(pair(s.Up, s.Down), "select")
+	tabs := item(pair(s.PrevTab, s.NextTab), "tabs")
+	clear := item(s.Clear.Key(0), "clear/quit")
+	switch mode {
+	case 0:
+		return helpLine(sel, item(s.Confirm.Key(0), "open entry"), tabs, item(g.TypeMatchups.Key(0), "types"), clear)
+	case 1:
+		return helpLine(sel, "type a name or stat (speed, -spa)", tabs, item(g.Search.Key(0), "search"), clear)
+	default:
+		return helpLine(sel, item(s.Confirm.Key(0), "confirm"), item(s.NextField.Key(0), "Type 1/Type 2"),
+			tabs, item(g.Search.Key(0), "search"), clear)
+	}
+}
+
+func (m tuiModel) entryHelp() string {
+	e, g, f := m.keys.Entry, m.keys.Global, m.keys.Filter
+	sel := item(pair(e.Up, e.Down), "select")
+	tabs := item(pair(e.PrevTab, e.NextTab), "tabs")
+	search := item(g.Search.Key(0), "search")
+	switch m.detail.tab {
+	case tabOverview:
+		jump := helpLine(e.Overview.Key(0), e.Abilities.Key(0), e.Moves.Key(0), e.Family.Key(0))
+		return helpLine(tabs, item(strings.ReplaceAll(jump, " • ", "/"), "jump to tab"), search,
+			item(g.TypeMatchups.Key(0), "types"), m.backLabel())
+	case tabAbilities:
+		return helpLine(item(pair(e.Up, e.Down), "select ability"), tabs, search, m.backLabel())
+	case tabMoves:
+		if m.detail.filtering {
+			return helpLine("type to filter", item(pair(f.Up, f.Down), "select"),
+				item(f.Apply.Key(0), "keep filter"), item(f.Cancel.Key(0), "clear filter"))
+		}
+		return helpLine(sel, item(pair(e.PrevGame, e.NextGame), "game"), item(e.Filter.Key(0), "filter"),
+			tabs, search, m.backLabel())
+	default: // family
+		return helpLine(sel, item(e.Open.Key(0), "open"), tabs, search, m.backLabel())
+	}
+}

@@ -1,0 +1,71 @@
+# Pokédex configuration.
+#
+# Location: $XDG_CONFIG_HOME/pokedex/config.toml (usually ~/.config/pokedex/config.toml),
+# or the file given with --config or the POKEDEX_CONFIG environment variable.
+#
+# Every setting is optional: anything you leave out keeps its default value (the
+# values shown here). Run `pokedex config check` after editing, and see
+# docs/configuration.md and docs/keybindings.md for the full reference.
+
+[general]
+# Days before cached PokeAPI data is downloaded again (sprites are kept forever).
+cache_ttl_days = 30
+# Maximum number of requests sent to PokeAPI at the same time (1-20).
+max_requests = 6
+# Pause, in milliseconds, before loading a Pokémon you are scrolling past in the
+# search list. Lower feels snappier, higher sends fewer requests.
+preview_delay_ms = 150
+# Show pixel-art sprites (TUI and the `pokemon` subcommand).
+sprites = true
+
+# Key bindings: each action takes a list of keys. Setting an action replaces all of its
+# default keys. Key names: "a", "G", "/", "enter", "esc", "tab", "shift+tab", "space",
+# "backspace", "up", "down", "left", "right", "pgup", "pgdown", "home", "end", "f1"…,
+# with modifiers "ctrl+", "alt+" and "shift+" (e.g. "ctrl+k", "alt+enter").
+
+# Work on every screen.
+[keys.global]
+quit = ["ctrl+c"]
+search = ["ctrl+f"]          # new Pokémon search
+type_matchups = ["ctrl+t"]   # jump to the Type Matchups tab
+
+# Search screen (Pokédex, Natures and Type Matchups tabs). You are typing in a text box
+# here, so avoid plain letters: they could no longer be typed.
+[keys.search]
+up = ["up", "ctrl+k", "ctrl+p"]
+down = ["down", "ctrl+j", "ctrl+n"]
+confirm = ["enter"]          # open the entry / pick the type
+clear = ["esc"]              # clear the box; on an empty box, quit
+next_field = ["tab"]         # next box in the same tab (Type 1 <-> Type 2)
+prev_field = ["shift+tab"]
+next_tab = ["ctrl+l"]
+prev_tab = ["ctrl+h"]
+
+# Pokémon entry screen (Overview, Abilities, Moves and Family tabs).
+[keys.entry]
+up = ["up", "k", "ctrl+k", "ctrl+p"]
+down = ["down", "j", "ctrl+j", "ctrl+n"]
+page_up = ["pgup"]
+page_down = ["pgdown"]
+top = ["home", "g"]
+bottom = ["end", "G"]
+next_tab = ["ctrl+l", "right", "l"]
+prev_tab = ["ctrl+h", "left", "h"]
+overview = ["1"]
+abilities = ["2"]
+moves = ["3"]
+family = ["4", "f"]
+next_game = ["]", ">"]       # Moves tab: next game
+prev_game = ["[", "<"]       # Moves tab: previous game
+filter = ["/"]               # Moves tab: filter the move list
+open = ["enter"]             # Family tab: open the selected Pokémon
+back = ["esc", "backspace", "q"]
+
+# While typing in the move filter.
+[keys.filter]
+up = ["up", "ctrl+k", "ctrl+p"]
+down = ["down", "ctrl+j", "ctrl+n"]
+apply = ["enter"]            # keep the filter and leave the box
+cancel = ["esc"]             # clear the filter and leave the box
+next_tab = ["ctrl+l"]
+prev_tab = ["ctrl+h"]

@@ -179,24 +179,25 @@ func (m tuiModel) updateDetail(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// While filtering, keys go to the filter input (except list navigation).
 	if d.filtering {
 		if isKey {
-			switch key.String() {
-			case "esc":
+			k, keys := key.String(), m.keys.Filter
+			switch {
+			case keys.Cancel.Matches(k):
 				d.filtering = false
 				d.filter.Blur()
 				d.filter.SetValue("")
 				d.moveSel = 0
 				return m, nil
-			case "enter":
+			case keys.Apply.Matches(k):
 				d.filtering = false
 				d.filter.Blur()
 				return m, nil
-			case "up", "ctrl+k", "ctrl+p":
+			case keys.Up.Matches(k):
 				return m, m.moveSelection(-1)
-			case "down", "ctrl+j", "ctrl+n":
+			case keys.Down.Matches(k):
 				return m, m.moveSelection(1)
-			case "ctrl+l":
+			case keys.NextTab.Matches(k):
 				return m, m.setTab(d.tab + 1)
-			case "ctrl+h":
+			case keys.PrevTab.Matches(k):
 				return m, m.setTab(d.tab - 1)
 			}
 		}
@@ -212,8 +213,9 @@ func (m tuiModel) updateDetail(msg tea.Msg) (tea.Model, tea.Cmd) {
 	if !isKey {
 		return m, nil
 	}
-	switch key.String() {
-	case "esc", "backspace", "q":
+	k, keys := key.String(), m.keys.Entry
+	switch {
+	case keys.Back.Matches(k):
 		if n := len(m.history); n > 0 { // back to the Pokémon we came from
 			m.detail = m.history[n-1]
 			m.history = m.history[:n-1]
@@ -221,43 +223,43 @@ func (m tuiModel) updateDetail(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		m.screen = screenSearch
 		return m, nil
-	case "enter":
+	case keys.Open.Matches(k):
 		if d.tab == tabFamily {
 			return m, m.openFamily()
 		}
-	case "tab", "right", "l", "ctrl+l":
+	case keys.NextTab.Matches(k):
 		return m, m.setTab(d.tab + 1)
-	case "shift+tab", "left", "h", "ctrl+h":
+	case keys.PrevTab.Matches(k):
 		return m, m.setTab(d.tab - 1)
-	case "1":
+	case keys.Overview.Matches(k):
 		return m, m.setTab(tabOverview)
-	case "2":
+	case keys.Abilities.Matches(k):
 		return m, m.setTab(tabAbilities)
-	case "3":
+	case keys.Moves.Matches(k):
 		return m, m.setTab(tabMoves)
-	case "4", "f":
+	case keys.Family.Matches(k):
 		return m, m.setTab(tabFamily)
-	case "up", "k", "ctrl+k", "ctrl+p":
+	case keys.Up.Matches(k):
 		return m, m.moveSelection(-1)
-	case "down", "j", "ctrl+j", "ctrl+n":
+	case keys.Down.Matches(k):
 		return m, m.moveSelection(1)
-	case "pgup":
+	case keys.PageUp.Matches(k):
 		return m, m.moveSelection(-10)
-	case "pgdown":
+	case keys.PageDown.Matches(k):
 		return m, m.moveSelection(10)
-	case "home", "g":
+	case keys.Top.Matches(k):
 		return m, m.moveSelection(-1 << 20)
-	case "end", "G":
+	case keys.Bottom.Matches(k):
 		return m, m.moveSelection(1 << 20)
-	case "]", ">":
+	case keys.NextGame.Matches(k):
 		if d.tab == tabMoves {
 			return m, m.setGame(1)
 		}
-	case "[", "<":
+	case keys.PrevGame.Matches(k):
 		if d.tab == tabMoves {
 			return m, m.setGame(-1)
 		}
-	case "/":
+	case keys.Filter.Matches(k):
 		if d.tab == tabMoves {
 			d.filtering = true
 			return m, d.filter.Focus()
@@ -283,24 +285,18 @@ func (m tuiModel) viewDetail() string {
 	totalW = min(totalW, 130)
 	bodyH := max(12, m.height-10)
 
-	var body, help string
+	var body string
 	switch d.tab {
 	case tabOverview:
 		body = m.viewOverview(totalW)
-		help = "ctrl+h/l, ←/→ or 1-4 tabs • 4 family • ctrl+f search • ctrl+t types • " + m.backLabel()
 	case tabAbilities:
 		body = m.viewAbilities(totalW)
-		help = "↑/↓ select ability • ctrl+h/l, ←/→ or 1-4 tabs • ctrl+f search • ctrl+t types • " + m.backLabel()
 	case tabMoves:
 		body = m.viewMoves(totalW, bodyH)
-		help = "↑/↓ ctrl+k/j select • [/] game • / filter • ctrl+h/l tabs • ctrl+f search • " + m.backLabel()
-		if d.filtering {
-			help = "type to filter • ↑/↓ select • enter keep filter • esc clear filter"
-		}
 	case tabFamily:
 		body = m.viewFamily(totalW, bodyH)
-		help = "↑/↓ ctrl+k/j select • enter open • ctrl+h/l tabs • ctrl+f search • " + m.backLabel()
 	}
+	help := m.entryHelp()
 	return lipgloss.JoinVertical(lipgloss.Left, m.header(extra), "", tabs, "", body, m.footer(help))
 }
 

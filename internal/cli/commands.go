@@ -136,7 +136,7 @@ func printChart(chart dex.TypeChart, defTypes []string) {
 	fmt.Println()
 }
 
-func cmdPokemon(d *dex.Client, query string, ask prompter) (bool, error) {
+func cmdPokemon(d *dex.Client, query string, ask prompter, sprites bool) (bool, error) {
 	name, err := resolvePokemon(d, query, ask)
 	if err != nil || name == "" {
 		return false, err
@@ -150,7 +150,7 @@ func cmdPokemon(d *dex.Client, query string, ask prompter) (bool, error) {
 		return false, err
 	}
 	fmt.Println()
-	if useColor { // sprites need a colour terminal
+	if useColor && sprites { // sprites need a colour terminal
 		if img, err := d.Sprite(p.Name, p.Sprite); err == nil {
 			lipgloss.Println(sprite.Render(img, 32, 16))
 		}

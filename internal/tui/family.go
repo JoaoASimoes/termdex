@@ -222,8 +222,9 @@ func (m tuiModel) familyCard(it familyItem, width int) string {
 
 // backLabel names the Pokémon Esc returns to, for the help line.
 func (m tuiModel) backLabel() string {
+	back := m.keys.Entry.Back.Key(0)
 	if n := len(m.history); n > 0 {
-		return fmt.Sprintf("esc back to %s", dex.DisplayName(m.history[n-1].p.Name))
+		return fmt.Sprintf("%s back to %s", back, dex.DisplayName(m.history[n-1].p.Name))
 	}
-	return "esc back"
+	return back + " back"
 }
