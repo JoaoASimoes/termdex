@@ -1,0 +1,19 @@
+# Binaries
+/type_calc
+/type_calc.exe
+/dist/
+*.exe
+*.test
+*.out
+
+# Go
+/vendor/
+go.work
+go.work.sum
+
+# Editors / OS
+.idea/
+.vscode/
+*.swp
+*~
+.DS_Store
