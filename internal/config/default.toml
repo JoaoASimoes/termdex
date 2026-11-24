@@ -1,10 +1,10 @@
 # Pokédex configuration.
 #
-# Location: $XDG_CONFIG_HOME/pokedex/config.toml (usually ~/.config/pokedex/config.toml),
-# or the file given with --config or the POKEDEX_CONFIG environment variable.
+# Location: $XDG_CONFIG_HOME/termdex/config.toml (usually ~/.config/termdex/config.toml),
+# or the file given with --config or the TERMDEX_CONFIG environment variable.
 #
 # Every setting is optional: anything you leave out keeps its default value (the
-# values shown here). Run `pokedex config check` after editing, and see
+# values shown here). Run `termdex config check` after editing, and see
 # docs/configuration.md and docs/keybindings.md for the full reference.
 
 [general]

@@ -1,4 +1,4 @@
-<h1 align="center">◓ Pokédex</h1>
+<h1 align="center">◓ termdex</h1>
 
 <p align="center">
   A fast, offline-friendly Pokédex for your terminal: Pokémon, moves, items, natures and
@@ -6,11 +6,11 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/JoaoASimoes/pokedex/actions/workflows/ci.yml"><img alt="CI" src="https://img.shields.io/github/actions/workflow/status/JoaoASimoes/pokedex/ci.yml?branch=main&label=CI"></a>
-  <a href="https://github.com/JoaoASimoes/pokedex/releases"><img alt="Release" src="https://img.shields.io/github/v/release/JoaoASimoes/pokedex?include_prereleases&sort=semver"></a>
-  <a href="https://goreportcard.com/report/github.com/JoaoASimoes/pokedex"><img alt="Go Report Card" src="https://goreportcard.com/badge/github.com/JoaoASimoes/pokedex"></a>
-  <img alt="Go version" src="https://img.shields.io/github/go-mod/go-version/JoaoASimoes/pokedex">
-  <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/github/license/JoaoASimoes/pokedex"></a>
+  <a href="https://github.com/JoaoASimoes/termdex/actions/workflows/ci.yml"><img alt="CI" src="https://img.shields.io/github/actions/workflow/status/JoaoASimoes/termdex/ci.yml?branch=main&label=CI"></a>
+  <a href="https://github.com/JoaoASimoes/termdex/releases"><img alt="Release" src="https://img.shields.io/github/v/release/JoaoASimoes/termdex?include_prereleases&sort=semver"></a>
+  <a href="https://goreportcard.com/report/github.com/JoaoASimoes/termdex"><img alt="Go Report Card" src="https://goreportcard.com/badge/github.com/JoaoASimoes/termdex"></a>
+  <img alt="Go version" src="https://img.shields.io/github/go-mod/go-version/JoaoASimoes/termdex">
+  <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/github/license/JoaoASimoes/termdex"></a>
 </p>
 
 <p align="center">
@@ -49,13 +49,13 @@
 ## Installation
 
 **Pre-built binaries** for Linux, macOS and Windows are on the
-[Releases](https://github.com/JoaoASimoes/pokedex/releases) page: download the archive for
-your system, extract it and put `pokedex` somewhere on your `PATH`.
+[Releases](https://github.com/JoaoASimoes/termdex/releases) page: download the archive for
+your system, extract it and put `termdex` somewhere on your `PATH`.
 
 **With Go** (1.26 or newer; an older `go` fetches the right toolchain by itself):
 
 ```bash
-go install github.com/JoaoASimoes/pokedex/cmd/pokedex@latest
+go install github.com/JoaoASimoes/termdex/cmd/termdex@latest
 ```
 
 This installs into `$(go env GOPATH)/bin` (usually `~/go/bin`), which should be on your `PATH`.
@@ -63,9 +63,9 @@ This installs into `$(go env GOPATH)/bin` (usually `~/go/bin`), which should be 
 **From source**:
 
 ```bash
-git clone https://github.com/JoaoASimoes/pokedex.git
-cd pokedex
-make install        # or: make build, for ./pokedex
+git clone https://github.com/JoaoASimoes/termdex.git
+cd termdex
+make install        # or: make build, for ./termdex
 ```
 
 The interface looks best in a terminal with 24-bit colour (most modern terminals) and at
@@ -74,7 +74,7 @@ least 100×30 characters; smaller terminals work too, with scrolling.
 ## Quick start
 
 ```bash
-pokedex
+termdex
 ```
 
 Start typing a name, move through the list with `↑`/`↓` (or `ctrl+j`/`ctrl+k`) and press
@@ -85,15 +85,15 @@ on. The full list is in [docs/keybindings.md](docs/keybindings.md).
 ### Subcommands
 
 ```
-pokedex pokemon <name>        weaknesses of a Pokémon (with its sprite)
-pokedex type <type> [type2]   weaknesses of one or two types
-pokedex types                 list the types
-pokedex config path|init|show|check
-pokedex version
+termdex pokemon <name>        weaknesses of a Pokémon (with its sprite)
+termdex type <type> [type2]   weaknesses of one or two types
+termdex types                 list the types
+termdex config path|init|show|check
+termdex version
 ```
 
 ```
-$ pokedex type steel fary
+$ termdex type steel fary
 'fary' not found; using 'fairy'.
 
 Type(s): Steel / Fairy
@@ -109,11 +109,11 @@ another config file.
 
 ## Configuration
 
-Pokédex works without any configuration. To change key bindings, colours or options:
+termdex works without any configuration. To change key bindings, colours or options:
 
 ```bash
-pokedex config init     # writes the commented defaults to ~/.config/pokedex/config.toml
-pokedex config check    # validate after editing
+termdex config init     # writes the commented defaults to ~/.config/termdex/config.toml
+termdex config check    # validate after editing
 ```
 
 ```toml

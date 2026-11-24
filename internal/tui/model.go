@@ -12,9 +12,9 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 
-	"github.com/JoaoASimoes/pokedex/internal/config"
-	"github.com/JoaoASimoes/pokedex/internal/dex"
-	"github.com/JoaoASimoes/pokedex/internal/sprite"
+	"github.com/JoaoASimoes/termdex/internal/config"
+	"github.com/JoaoASimoes/termdex/internal/dex"
+	"github.com/JoaoASimoes/termdex/internal/sprite"
 )
 
 // The TUI has three screens:
@@ -627,12 +627,12 @@ func (m tuiModel) View() tea.View {
 	}
 	v := tea.NewView(content)
 	v.AltScreen = true
-	v.WindowTitle = "Pokédex"
+	v.WindowTitle = "termdex"
 	return v
 }
 
 func (m tuiModel) header(extra string) string {
-	h := titleStyle.Render("◓ Pokédex")
+	h := titleStyle.Render("◓ termdex")
 	if extra != "" {
 		h += "  " + extra
 	}

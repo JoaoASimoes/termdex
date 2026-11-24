@@ -81,7 +81,7 @@ func NewClient(opts Options) *Client {
 	if err != nil {
 		base = os.TempDir()
 	}
-	dir := filepath.Join(base, "pokedex")
+	dir := filepath.Join(base, "termdex")
 	_ = os.MkdirAll(dir, 0o755)
 	return &Client{
 		refresh:  opts.Refresh,
@@ -97,7 +97,7 @@ func (d *Client) get(url string, out any) error {
 	if err != nil {
 		return err
 	}
-	req.Header.Set("User-Agent", "pokedex-cli/1.0")
+	req.Header.Set("User-Agent", "termdex/1.0")
 	d.sem <- struct{}{}
 	defer func() { <-d.sem }()
 	resp, err := d.client.Do(req)

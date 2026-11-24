@@ -5,7 +5,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
-	"github.com/JoaoASimoes/pokedex/internal/dex"
+	"github.com/JoaoASimoes/termdex/internal/dex"
 )
 
 // The Family tab lists Pokémon related to the current one (its evolution line and the

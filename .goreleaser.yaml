@@ -3,7 +3,7 @@
 # Try it locally without publishing: goreleaser release --snapshot --clean
 version: 2
 
-project_name: pokedex
+project_name: termdex
 
 before:
   hooks:
@@ -11,8 +11,8 @@ before:
     - go test ./...
 
 builds:
-  - main: ./cmd/pokedex
-    binary: pokedex
+  - main: ./cmd/termdex
+    binary: termdex
     env:
       - CGO_ENABLED=0
     flags:

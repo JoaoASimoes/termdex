@@ -2,8 +2,8 @@ package tui
 
 import (
 	"fmt"
-	"github.com/JoaoASimoes/pokedex/internal/dex"
-	"github.com/JoaoASimoes/pokedex/internal/fuzzy"
+	"github.com/JoaoASimoes/termdex/internal/dex"
+	"github.com/JoaoASimoes/termdex/internal/fuzzy"
 	"strings"
 
 	"charm.land/bubbles/v2/textinput"

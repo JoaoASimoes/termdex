@@ -8,7 +8,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 
-	"github.com/JoaoASimoes/pokedex/internal/dex"
+	"github.com/JoaoASimoes/termdex/internal/dex"
 )
 
 // Navigation: besides the search screen there are two kinds of pages, a Pokémon entry

@@ -1,6 +1,6 @@
 # Binaries
-/pokedex
-/pokedex.exe
+/termdex
+/termdex.exe
 /dist/
 *.exe
 *.test

@@ -3,7 +3,7 @@ package tui
 import (
 	"testing"
 
-	"github.com/JoaoASimoes/pokedex/internal/dex"
+	"github.com/JoaoASimoes/termdex/internal/dex"
 )
 
 func TestDefaultGameSkipsSpinOffs(t *testing.T) {

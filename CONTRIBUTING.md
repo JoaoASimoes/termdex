@@ -1,12 +1,12 @@
 # Contributing
 
-Thanks for your interest in Pokédex! Bug reports, ideas, documentation fixes and code are
+Thanks for your interest in termdex! Bug reports, ideas, documentation fixes and code are
 all welcome.
 
 ## Ways to help
 
 - **Report a bug** or **suggest a feature** with the
-  [issue templates](https://github.com/JoaoASimoes/pokedex/issues/new/choose).
+  [issue templates](https://github.com/JoaoASimoes/termdex/issues/new/choose).
 - **Fix an issue**: look for the `good first issue` and `help wanted` labels, and leave a
   comment so nobody works on the same thing twice.
 - **Improve the docs**: anything unclear in the README or in [`docs/`](docs/) is a bug too.
@@ -20,10 +20,10 @@ You need [Go](https://go.dev/dl/) 1.26 or newer (with an older Go, `GOTOOLCHAIN=
 default, downloads the right version) and `make`.
 
 ```bash
-git clone https://github.com/JoaoASimoes/pokedex.git
-cd pokedex
-make build      # builds ./pokedex
-./pokedex       # run it
+git clone https://github.com/JoaoASimoes/termdex.git
+cd termdex
+make build      # builds ./termdex
+./termdex       # run it
 ```
 
 Useful targets:
@@ -38,12 +38,12 @@ Useful targets:
 | `make dist`      | Cross-compile for every platform into `dist/`                  |
 
 Use a separate config file while developing so your own settings stay untouched:
-`./pokedex --config /dev/null` starts with the defaults.
+`./termdex --config /dev/null` starts with the defaults.
 
 ## Project layout
 
 ```
-cmd/pokedex/     entry point
+cmd/termdex/     entry point
 internal/cli/    flags, subcommands, `config` command
 internal/config/ config file, defaults (default.toml), validation, help texts
 internal/tui/    Bubble Tea interface: screens, navigation, rendering

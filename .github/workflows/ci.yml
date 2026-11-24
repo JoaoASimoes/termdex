@@ -39,8 +39,8 @@ jobs:
         run: go test ./...
 
       - name: Build
-        run: go build -trimpath ./cmd/pokedex
+        run: go build -trimpath ./cmd/termdex
 
       - name: Check the example config
         if: runner.os == 'Linux'
-        run: go run ./cmd/pokedex --config configs/config.example.toml config check
+        run: go run ./cmd/termdex --config configs/config.example.toml config check

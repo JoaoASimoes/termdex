@@ -17,7 +17,7 @@ body:
     attributes:
       label: Steps to reproduce
       placeholder: |
-        1. Run `pokedex`
+        1. Run `termdex`
         2. Type `charizard` and press enter
         3. …
     validations:
@@ -30,8 +30,8 @@ body:
     id: version
     attributes:
       label: Version
-      description: Output of `pokedex --version`.
-      placeholder: pokedex v0.1.0
+      description: Output of `termdex --version`.
+      placeholder: termdex v0.1.0
     validations:
       required: true
   - type: input
@@ -45,5 +45,5 @@ body:
     id: config
     attributes:
       label: Config file (optional)
-      description: If you changed the configuration, paste the relevant part (`pokedex config show`).
+      description: If you changed the configuration, paste the relevant part (`termdex config show`).
       render: toml

@@ -4,8 +4,8 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/JoaoASimoes/pokedex/internal/config"
-	"github.com/JoaoASimoes/pokedex/internal/dex"
+	"github.com/JoaoASimoes/termdex/internal/config"
+	"github.com/JoaoASimoes/termdex/internal/dex"
 )
 
 func dexTestModel() tuiModel {

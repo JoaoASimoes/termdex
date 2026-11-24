@@ -1,7 +1,7 @@
 package dex
 
 import (
-	"github.com/JoaoASimoes/pokedex/internal/fuzzy"
+	"github.com/JoaoASimoes/termdex/internal/fuzzy"
 	"sort"
 	"strings"
 	"sync"

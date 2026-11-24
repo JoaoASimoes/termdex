@@ -19,13 +19,13 @@ import (
 	"github.com/BurntSushi/toml"
 )
 
-// DefaultTOML is the commented default configuration; `pokedex config init` writes it.
+// DefaultTOML is the commented default configuration; `termdex config init` writes it.
 //
 //go:embed default.toml
 var DefaultTOML []byte
 
 // EnvPath names the environment variable that overrides the config file location.
-const EnvPath = "POKEDEX_CONFIG"
+const EnvPath = "TERMDEX_CONFIG"
 
 type Config struct {
 	General General `toml:"general"`
@@ -200,7 +200,7 @@ func DefaultPath() string {
 	if err != nil {
 		return "config.toml"
 	}
-	return filepath.Join(dir, "pokedex", "config.toml")
+	return filepath.Join(dir, "termdex", "config.toml")
 }
 
 // Load reads path on top of the defaults. A missing file is not an error: the

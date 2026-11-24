@@ -9,8 +9,8 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 
-	"github.com/JoaoASimoes/pokedex/internal/dex"
-	"github.com/JoaoASimoes/pokedex/internal/fuzzy"
+	"github.com/JoaoASimoes/termdex/internal/dex"
+	"github.com/JoaoASimoes/termdex/internal/fuzzy"
 )
 
 type field int

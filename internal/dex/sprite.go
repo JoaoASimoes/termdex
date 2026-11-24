@@ -36,7 +36,7 @@ func (d *Client) getBytes(url string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	req.Header.Set("User-Agent", "pokedex-cli/1.0")
+	req.Header.Set("User-Agent", "termdex/1.0")
 	d.sem <- struct{}{}
 	defer func() { <-d.sem }()
 	resp, err := d.client.Do(req)

@@ -8,12 +8,12 @@ import (
 	"runtime/debug"
 	"strings"
 
-	"github.com/JoaoASimoes/pokedex/internal/config"
-	"github.com/JoaoASimoes/pokedex/internal/dex"
-	"github.com/JoaoASimoes/pokedex/internal/tui"
+	"github.com/JoaoASimoes/termdex/internal/config"
+	"github.com/JoaoASimoes/termdex/internal/dex"
+	"github.com/JoaoASimoes/termdex/internal/tui"
 )
 
-// Version is the program version, set by main (see cmd/pokedex).
+// Version is the program version, set by main (see cmd/termdex).
 var Version = "dev"
 
 // version returns Version, or the module version when installed with
@@ -63,7 +63,7 @@ Options (before the command):
 	}
 	args = fs.Args()
 	if *showVersion || (len(args) > 0 && args[0] == "version") {
-		fmt.Println("pokedex " + version())
+		fmt.Println("termdex " + version())
 		return 0
 	}
 
@@ -78,7 +78,7 @@ Options (before the command):
 	cfg, err := config.Load(path)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, red("Config error: "+err.Error()))
-		fmt.Fprintln(os.Stderr, "Fix the file (pokedex config check), or run with --config /dev/null to use the defaults.")
+		fmt.Fprintln(os.Stderr, "Fix the file (termdex config check), or run with --config /dev/null to use the defaults.")
 		return 2
 	}
 
@@ -130,7 +130,7 @@ Options (before the command):
 	return 0
 }
 
-// runConfig implements `pokedex config <command>`.
+// runConfig implements `termdex config <command>`.
 func runConfig(path string, args []string, usage func()) int {
 	if len(args) == 0 {
 		usage()

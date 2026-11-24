@@ -8,8 +8,8 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
-	"github.com/JoaoASimoes/pokedex/internal/dex"
-	"github.com/JoaoASimoes/pokedex/internal/fuzzy"
+	"github.com/JoaoASimoes/termdex/internal/dex"
+	"github.com/JoaoASimoes/termdex/internal/fuzzy"
 )
 
 // The Pokédex list is in National Pokédex order, each alternate form right after its

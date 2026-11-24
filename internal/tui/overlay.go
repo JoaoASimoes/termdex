@@ -5,7 +5,7 @@ import (
 
 	"charm.land/lipgloss/v2"
 
-	"github.com/JoaoASimoes/pokedex/internal/config"
+	"github.com/JoaoASimoes/termdex/internal/config"
 )
 
 // The help screen lists every key of the current screen, built from the configuration,
@@ -57,7 +57,7 @@ func (m tuiModel) viewHelp() string {
 			b.WriteString(wrap("• "+t, width) + "\n")
 		}
 	}
-	b.WriteString("\n" + labelStyle.Render("Every key can be changed in the config file: run `pokedex config path` to find it, see docs/keybindings.md."))
+	b.WriteString("\n" + labelStyle.Render("Every key can be changed in the config file: run `termdex config path` to find it, see docs/keybindings.md."))
 
 	g := m.keys.Global
 	foot := m.footer(helpLine(item(g.Help.Key(0)+"/esc", "close"),

@@ -27,10 +27,10 @@ First public release.
 - Pixel-art sprites drawn with half-block characters.
 - Help screen (`?` or `F1`), scrolling for panels that do not fit, clear offline messages
   with retry.
-- Config file (`~/.config/pokedex/config.toml`) for every key binding, the colours and
-  general options; `pokedex config path|init|show|check`.
+- Config file (`~/.config/termdex/config.toml`) for every key binding, the colours and
+  general options; `termdex config path|init|show|check`.
 - Subcommands for quick lookups: `pokemon`, `type`, `types`, `version`.
 - Local cache of all PokeAPI data; works offline for anything already seen.
 
-[Unreleased]: https://github.com/JoaoASimoes/pokedex/compare/v0.1.0...HEAD
-[0.1.0]: https://github.com/JoaoASimoes/pokedex/releases/tag/v0.1.0
+[Unreleased]: https://github.com/JoaoASimoes/termdex/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/JoaoASimoes/termdex/releases/tag/v0.1.0

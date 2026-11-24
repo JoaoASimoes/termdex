@@ -1,7 +1,7 @@
 package tui
 
 import (
-	"github.com/JoaoASimoes/pokedex/internal/dex"
+	"github.com/JoaoASimoes/termdex/internal/dex"
 )
 
 import "testing"

@@ -4,9 +4,9 @@ package cli
 import (
 	"bufio"
 	"fmt"
-	"github.com/JoaoASimoes/pokedex/internal/dex"
-	"github.com/JoaoASimoes/pokedex/internal/fuzzy"
-	"github.com/JoaoASimoes/pokedex/internal/sprite"
+	"github.com/JoaoASimoes/termdex/internal/dex"
+	"github.com/JoaoASimoes/termdex/internal/fuzzy"
+	"github.com/JoaoASimoes/termdex/internal/sprite"
 	"os"
 	"strconv"
 	"strings"

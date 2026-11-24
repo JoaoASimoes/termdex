@@ -10,7 +10,7 @@ Each action takes a **list** of keys. Setting an action **replaces** all of its 
 keys, so list every key you want to keep. Actions you do not mention keep their defaults.
 
 ```toml
-# ~/.config/pokedex/config.toml
+# ~/.config/termdex/config.toml
 [keys.search]
 down = ["down", "ctrl+d"]     # ctrl+j / ctrl+n no longer move down in the search list
 up = ["up", "ctrl+u"]
@@ -21,7 +21,7 @@ type_matchups = ["ctrl+y"]
 
 To disable an action, give it an empty list: `filter = []`.
 
-Then run `pokedex config check`. It reports typos in action names and keys bound to two
+Then run `termdex config check`. It reports typos in action names and keys bound to two
 actions on the same screen.
 
 ## Key names

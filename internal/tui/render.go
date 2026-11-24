@@ -7,8 +7,8 @@ import (
 
 	"charm.land/lipgloss/v2"
 
-	"github.com/JoaoASimoes/pokedex/internal/config"
-	"github.com/JoaoASimoes/pokedex/internal/dex"
+	"github.com/JoaoASimoes/termdex/internal/config"
+	"github.com/JoaoASimoes/termdex/internal/dex"
 )
 
 // ----------------------------------------------------------------------------- styles

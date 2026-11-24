@@ -3,7 +3,7 @@ package tui
 import (
 	"strings"
 
-	"github.com/JoaoASimoes/pokedex/internal/config"
+	"github.com/JoaoASimoes/termdex/internal/config"
 )
 
 // Help lines are built from the configured key bindings, so they always show the
