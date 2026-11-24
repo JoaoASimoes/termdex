@@ -20,3 +20,17 @@ func TestEffectiveness(t *testing.T) {
 		}
 	}
 }
+
+func TestCapitalize(t *testing.T) {
+	cases := map[string]string{
+		"":                       "",
+		"fire":                   "Fire",
+		"élan":                   "Élan",
+		"— none (single type) —": "— none (single type) —", // multi-byte first rune stays intact
+	}
+	for in, want := range cases {
+		if got := Capitalize(in); got != want {
+			t.Errorf("Capitalize(%q) = %q, want %q", in, got, want)
+		}
+	}
+}

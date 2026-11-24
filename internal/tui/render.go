@@ -79,8 +79,8 @@ var classStyles = map[string]lipgloss.Style{
 
 func classLabel(class string, short bool) string {
 	label := dex.Capitalize(class)
-	if short && len(label) > 4 {
-		label = label[:4]
+	if short && len([]rune(label)) > 4 {
+		label = string([]rune(label)[:4])
 	}
 	if st, ok := classStyles[class]; ok {
 		return st.Render(label)

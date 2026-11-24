@@ -3,6 +3,8 @@ package dex
 import (
 	"fmt"
 	"strings"
+	"unicode"
+	"unicode/utf8"
 )
 
 // EvoNode is one species in an evolution chain.
@@ -205,7 +207,8 @@ func HowText(how []string) string {
 	}
 	out := how[0]
 	for _, h := range how[1:] {
-		out += " or " + strings.ToLower(h[:1]) + h[1:]
+		r, size := utf8.DecodeRuneInString(h)
+		out += " or " + string(unicode.ToLower(r)) + h[size:]
 	}
 	return out
 }

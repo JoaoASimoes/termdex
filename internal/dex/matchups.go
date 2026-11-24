@@ -3,6 +3,8 @@ package dex
 import (
 	"sort"
 	"strings"
+	"unicode"
+	"unicode/utf8"
 )
 
 // Effectiveness returns, for every attacking type, the damage multiplier against defTypes.
@@ -82,11 +84,14 @@ func AbilityWarnings(abilities []string) []string {
 	return notes
 }
 
+// Capitalize upper-cases the first character (rune-aware, so multi-byte text such as
+// "é" or "—" is never split).
 func Capitalize(s string) string {
-	if s == "" {
+	r, size := utf8.DecodeRuneInString(s)
+	if size == 0 {
 		return s
 	}
-	return strings.ToUpper(s[:1]) + s[1:]
+	return string(unicode.ToUpper(r)) + s[size:]
 }
 
 // DisplayName turns "charizard-mega-x" into "Charizard Mega X".
