@@ -6,6 +6,20 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-11-24
+
+### Fixed
+
+- Screens no longer get bigger than the terminal. Some were a column too wide, and on small
+  terminals (e.g. 80×24) the search, the breadcrumb, the scroll indicator and the help
+  screen overflowed; the terminal then scrolled and left stray text on screen.
+- The help screen wraps its text to the terminal width.
+
+### Changed
+
+- Dependency updates: `golang.org/x/term` 0.48.0, `github.com/BurntSushi/toml` 1.6.0, and
+  newer versions of the GitHub Actions used by CI and releases.
+
 ## [0.1.0] - 2026-11-24
 
 First public release.
@@ -32,5 +46,6 @@ First public release.
 - Subcommands for quick lookups: `pokemon`, `type`, `types`, `version`.
 - Local cache of all PokeAPI data; works offline for anything already seen.
 
-[Unreleased]: https://github.com/JoaoASimoes/termdex/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/JoaoASimoes/termdex/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/JoaoASimoes/termdex/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/JoaoASimoes/termdex/releases/tag/v0.1.0
