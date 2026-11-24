@@ -1,4 +1,4 @@
-<h1 align="center">◓ termdex</h1>
+<h1 align="center">termdex</h1>
 
 <p align="center">
   A fast, offline-friendly Pokédex for your terminal: Pokémon, moves, items, natures and
@@ -8,7 +8,6 @@
 <p align="center">
   <a href="https://github.com/JoaoASimoes/termdex/actions/workflows/ci.yml"><img alt="CI" src="https://img.shields.io/github/actions/workflow/status/JoaoASimoes/termdex/ci.yml?branch=main&label=CI"></a>
   <a href="https://github.com/JoaoASimoes/termdex/releases"><img alt="Release" src="https://img.shields.io/github/v/release/JoaoASimoes/termdex?include_prereleases&sort=semver"></a>
-  <a href="https://goreportcard.com/report/github.com/JoaoASimoes/termdex"><img alt="Go Report Card" src="https://goreportcard.com/badge/github.com/JoaoASimoes/termdex"></a>
   <img alt="Go version" src="https://img.shields.io/github/go-mod/go-version/JoaoASimoes/termdex">
   <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/github/license/JoaoASimoes/termdex"></a>
 </p>
@@ -139,7 +138,8 @@ See [docs/configuration.md](docs/configuration.md) for every setting and
 
 Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for the development setup,
 the project layout and guidelines, and please follow the [Code of Conduct](CODE_OF_CONDUCT.md).
-Security issues: see [SECURITY.md](SECURITY.md).
+Security issues: see [SECURITY.md](SECURITY.md). Code quality report:
+[Go Report Card](https://goreportcard.com/report/github.com/JoaoASimoes/termdex).
 
 ## Acknowledgements
 
